@@ -1,5 +1,7 @@
 use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
 
+use colored::Colorize;
+
 use crate::piece::Piece;
 
 pub struct Game {
@@ -183,23 +185,23 @@ impl Game {
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        writeln!(f, "\t\tPlayer 1")?;
-        writeln!(f, "     a    b    c    d    e    f    g    h")?;
+        writeln!(f, "{}", format!("\t    Player 1").red().bold())?;
+        writeln!(f, "    a   b   c   d   e   f   g   h")?;
         self.board.iter().enumerate().for_each(|(i,row)| {
-            writeln!(f, "  -----------------------------------------").unwrap();
+            writeln!(f, "  ---------------------------------").unwrap();
             write!(f, "{} ", i+1).unwrap();
             row.iter().for_each(|piece| {
                 match piece {
                     Some(piece) => write!(f, "|{}", piece),
-                    None => write!(f,"|    "),
+                    None => write!(f,"|   "),
                 }.unwrap();
             });
             write!(f, "|").unwrap();
             writeln!(f, " {}", i+1).unwrap();
         });
-        writeln!(f, "  -----------------------------------------")?;
-        writeln!(f, "     a    b    c    d    e    f    g    h")?;
-        write!(f, "\t\tPlayer 2")?;
+        writeln!(f, "  ---------------------------------")?;
+        writeln!(f, "    a   b   c   d   e   f   g   h")?;
+        writeln!(f, "{}", format!("\t    Player 2").blue().bold())?;
         Ok(())
     }
 }
