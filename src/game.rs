@@ -53,6 +53,9 @@ impl Game {
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
+        if self.in_check(self.get_king()) {
+            println!("You're in check!");
+        }
         println!("Enter your move: (e.g. a2 a4)");
 
         let mut valid_move = false;
@@ -205,10 +208,23 @@ impl Game {
         }
         false
     }
+
+    fn get_king(&self) -> (u8, u8) {
+        for i in 0..8 {
+            for j in 0..8 {
+                if let Some(piece) = self.board[i][j] {
+                    if piece.player() == self.current_player && piece.is_king() {
+                        return (j as u8, i as u8);
+                    }
+                }
+            }
+        }
+        panic!("No king found!");
+    }
 }
 
 // TODO: make set method, use get method
-// TODO: implement checkmate
+// TODO: implement check and checkmate
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
@@ -239,14 +255,6 @@ impl Display for Game {
 pub enum Player {
     One,
     Two
-}
-impl Player {
-    pub fn num(&self) -> u8 {
-        match self {
-            Player::One => 1,
-            Player::Two => 2,
-        }
-    }
 }
 
 impl Display for Player {

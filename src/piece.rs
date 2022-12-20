@@ -68,6 +68,10 @@ impl Piece {
             Piece::Pawn(player) => *player
         }
     }
+
+    pub(crate) fn is_king(&self) -> bool {
+        matches!(self, Piece::King(_))
+    }
 }
 
 impl Display for Piece {
