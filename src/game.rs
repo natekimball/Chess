@@ -67,12 +67,12 @@ impl Game {
 
             if self.is_current_player(from) {
                 // if self.board[from.1 as usize][from.0 as usize].as_ref().unwrap().is_valid(from, to, self) {
-                if let Some(piece) = self.board[from.1 as usize][from.0 as usize] { 
+                if let Some(piece) = self.get(from) { 
                     if !piece.is_valid(from, to, self) {
                         println!("Invalid move! go again.");
                         continue;
                     }
-                    if let Some(conquered) = self.board[to.1 as usize][to.0 as usize] {
+                    if let Some(conquered) = self.get(to) {
                         if conquered.player() == self.current_player {
                             println!("You can't take your own piece!");
                             continue;
@@ -115,7 +115,7 @@ impl Game {
     }
 
     fn is_current_player(&self, from: (u8, u8)) -> bool {
-        let spot = self.board[from.1 as usize][from.0 as usize].as_ref();
+        let spot = self.get(from);
         if spot.is_none() {
             return false;
         }
@@ -128,13 +128,13 @@ impl Game {
     pub(crate) fn check_horiz(&self, from: (u8, u8), to: (u8, u8)) -> bool {
         if from.0 == to.0 {
             for i in min(from.1,to.1)..=max(from.1,to.1) {
-                if self.board[i as usize][from.0 as usize].is_some() && i != from.1 && i != to.1 {
+                if self.get((from.0, i)).is_some() && i != from.1 && i != to.1 {
                     return false;
                 }
             }
         } else {
             for i in min(from.0,to.0)..=max(from.0,to.0) {
-                if self.board[from.1 as usize][i as usize].is_some() && i != from.0 && i != to.0 {
+                if self.get((i, from.1)).is_some() && i != from.0 && i != to.0 {
                     return false;
                 }
             }
@@ -189,6 +189,21 @@ impl Game {
 
     pub(crate) fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
         self.board[y as usize][x as usize]
+    }
+
+    pub(crate) fn in_check(&mut self, king: (u8, u8)) -> bool {
+        for i in 0..8 {
+            for j in 0..8 {
+                if let Some(piece) = self.board[i][j] {
+                    if piece.player() != self.current_player {
+                        if piece.is_valid((i as u8,j as u8), king, self) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
     }
 
     // pub(crate) fn get(&self, x: u8, y: u8) -> Option<Piece> {
