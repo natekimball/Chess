@@ -33,24 +33,21 @@ impl Piece {
                     Player::Two => -1
                 };
                 let end = match player {
-                    Player::One => 6,
-                    Player::Two => 1
+                    Player::One => 5,
+                    Player::Two => 2
                 };
                 let single = (x,y) == (0, sign*1) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*2) as u8));
-                let double = from.1==(end as i8-sign*5) as u8 && (x,y) == (0, sign*2) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*3) as u8));
+                let double = from.1==(end as i8-sign*4) as u8 && (x,y) == (0, sign*2) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*3) as u8));
                 if double {
                     game.set_can_enpassant(true);
                     return true;
                 }
                 let diag = (x.abs() == 1) && (y == sign*1);
-                dbg!(last_move);
-                dbg!(to.1, (end as i8 - 2*sign) as u8);
-                dbg!((to.0,(end as i8 + sign*2) as u8));
                 if diag {
                     if game.check_spot_for_opponent(to) {
                         return true;
-                    } else if last_move && to.1==(end as i8 - sign) as u8 && game.check_spot_for_opponent((to.0,(end as i8 - sign*2) as u8)) {
-                        game.take((to.0,(end as i8 - 2*sign) as u8), None);
+                    } else if last_move && to.1==(end as i8) as u8 && game.check_spot_for_opponent((to.0,(end as i8 - sign) as u8)) {
+                        game.take((to.0,(end as i8 - sign) as u8), None);
                         return true;
                     } else {
                         return false;
@@ -58,46 +55,6 @@ impl Piece {
                 }
                 single
             }
-                    // Player::One => {
-                    //     let single = (x,y) == (0, 1) && game.check_horiz(from, (from.0, from.1+2));
-                    //     let double = from.1==6 && (x,y) == (0, -2) && game.check_horiz(from, (from.0, from.1+3));
-                    //     if double {
-                    //         game.set_can_enpassant(true);
-                    //         return true;
-                    //     }
-                    //     let diag = (x.abs() == 1) && (y == 1);
-                    //     if diag {
-                    //         if game.check_spot_for_opponent(to) {
-                    //             return true;
-                    //         } else if last_move && to.1==5 && game.check_spot_for_opponent((to.0,4)) {
-                    //             game.take((to.0,4), None);
-                    //             return true;
-                    //         } else {
-                    //             return false;
-                    //         }
-                    //     }
-                    //     single
-                    // },
-                    // Player::Two => {
-                    //     let single = (x,y) == (0, -1) && game.check_horiz(from, (from.0, (from.1 as i8 -2) as u8));
-                    //     let double = from.1==6 && (x,y) == (0, -2) && game.check_horiz(from, (from.0, (from.1 as i8 -3) as u8));
-                    //     if double {
-                    //         game.set_can_enpassant(true);
-                    //         return true;
-                    //     }
-                    //     let diag = (x.abs() == 1) && (y == -1);
-                    //     if diag {
-                    //         if game.check_spot_for_opponent(to) {
-                    //             return true;
-                    //         } else if last_move && to.1==2 && game.check_spot_for_opponent((to.0,3)) {
-                    //             game.take((to.0,3), None);
-                    //             return true;
-                    //         } else {
-                    //             return false;
-                    //         }
-                    //     }
-                    //     single
-                    // }
         }
     }
 
