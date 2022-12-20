@@ -17,13 +17,16 @@ impl Piece {
         if from == to {
             return false;
         }
+        if matches!(self, Piece::King(_)) && game.in_check(from) {
+            return false;
+        }
         let last_move = game.can_en_passant();
         game.set_can_enpassant(false);
 
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         match self {
             Piece::Queen(_) => ((x == 0 || y == 0) && game.check_horiz(from, to)) || ((x.abs() == y.abs()) && game.check_diag(from, (x,y))),
-            Piece::King(_) => (x.abs() < 2) && (y.abs() < 2),
+            Piece::King(_) => (x.abs() < 2) && (y.abs() < 2) && !game.in_check(to),
             Piece::Bishop(_) => (x.abs() == y.abs()) && game.check_diag(from, (x,y)),
             Piece::Rook(_) => (x == 0 || y == 0) && game.check_horiz(from, to),
             Piece::Knight(_) => (x.abs() == 2 && y.abs() == 1) || (x.abs() == 1 && y.abs() == 2),
