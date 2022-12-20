@@ -1,4 +1,6 @@
-use std::{io, fmt::{Display, Formatter, Error}};
+use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
+
+use crate::piece::Piece;
 
 pub struct Game {
     board: Vec<Vec<Option<Piece>>>,
@@ -58,8 +60,13 @@ impl Game {
             let from = (from.chars().nth(0).unwrap() as u8 - 'a' as u8, from.chars().nth(1).unwrap() as u8 - '1' as u8);
             let to = (to.chars().nth(0).unwrap() as u8 - 'a' as u8, to.chars().nth(1).unwrap() as u8 - '1' as u8);
 
-            if self.board[from.1 as usize][from.0 as usize].is_some() && self.is_current_player(from) {
-                if self.board[from.1 as usize][from.0 as usize].as_ref().unwrap().is_valid(from, to) {
+            if self.is_current_player(from) {
+                // if self.board[from.1 as usize][from.0 as usize].as_ref().unwrap().is_valid(from, to, self) {
+                if let Some(piece) = self.board[from.1 as usize][from.0 as usize] { 
+                    if !piece.is_valid(from, to, self) {
+                        println!("Invalid move! go again.");
+                        continue;
+                    }
                     if let Some(conquered) = self.board[to.1 as usize][to.0 as usize] {
                         if conquered.player() == self.current_player {
                             println!("You can't take your own piece!");
@@ -83,7 +90,7 @@ impl Game {
                     valid_move = true;
                 }
             } else {
-                println!("You can't move that piece!");
+                println!("You must move one of your own pieces!");
             }
             if !valid_move {
                 println!("Invalid move! go again.");
@@ -113,93 +120,87 @@ impl Game {
     }
 
     fn is_current_player(&self, from: (u8, u8)) -> bool {
-        match self.board[from.1 as usize][from.0 as usize].as_ref().unwrap().player() {
+        let spot = self.board[from.1 as usize][from.0 as usize].as_ref();
+        if spot.is_none() {
+            return false;
+        }
+        match spot.unwrap().player() {
             Player::Player1 => matches!(self.current_player, Player::Player1),
             Player::Player2 => matches!(self.current_player, Player::Player2),
         }
     }
+
+    pub(crate) fn check_horiz(&self, from: (u8, u8), to: (u8, u8)) -> bool {
+        if from.0 == to.0 {
+            for i in min(from.1,to.1)..=max(from.1,to.1) {
+                if self.board[i as usize][from.0 as usize].is_some() && i != from.1 && i != to.1 {
+                    return false;
+                }
+            }
+        } else {
+            for i in min(from.0,to.0)..=max(from.0,to.0) {
+                if self.board[from.1 as usize][i as usize].is_some() && i != from.0 && i != to.0 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+    
+    pub(crate) fn check_diag(&self, from: (u8, u8), delta: (i8, i8)) -> bool {
+        let signs = (delta.0.signum(), delta.1.signum());
+        for i in 1..delta.0.abs() as u8 {
+            if self.board[(from.1 as i8 + signs.1 * i as i8) as usize][(from.0 as i8 + signs.0 * i as i8) as usize].is_some() {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub(crate) fn check_spot_for_opponent(&self, to: (u8, u8)) -> bool {
+        !self.is_current_player(to)
+    }
+
+    pub(crate) fn take(&mut self, to: (u8, u8)) {
+        self.board[to.1 as usize][to.0 as usize] = None;
+    }    
 }
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        writeln!(f, "\t    Player 1")?;
+        writeln!(f, "\t\tPlayer 1")?;
+        writeln!(f, "     a    b    c    d    e    f    g    h")?;
         self.board.iter().enumerate().for_each(|(i,row)| {
-            writeln!(f, "  ---------------------------------").unwrap();
-            write!(f, "{i} ").unwrap();
+            writeln!(f, "  -----------------------------------------").unwrap();
+            write!(f, "{} ", i+1).unwrap();
             row.iter().for_each(|piece| {
                 match piece {
-                    Some(piece) => write!(f, "|{}", format!("{}", piece)),
-                    None => write!(f,"|   "),
+                    Some(piece) => write!(f, "|{}", piece),
+                    None => write!(f,"|    "),
                 }.unwrap();
             });
-            writeln!(f, "|").unwrap();
+            write!(f, "|").unwrap();
+            writeln!(f, " {}", i+1).unwrap();
         });
-        writeln!(f, "  ---------------------------------")?;
-        writeln!(f, "    a   b   c   d   e   f   g   h")?;
-        write!(f, "\t    Player 2")?;
+        writeln!(f, "  -----------------------------------------")?;
+        writeln!(f, "     a    b    c    d    e    f    g    h")?;
+        write!(f, "\t\tPlayer 2")?;
         Ok(())
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-enum Piece {
-    King(Player),
-    Queen(Player),
-    Rook(Player),
-    Bishop(Player),
-    Knight(Player),
-    Pawn(Player)
-}
-impl Piece {
-    fn is_valid(&self, from: (u8,u8), to: (u8, u8)) -> bool {
-        let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
-        match self {
-            Piece::Queen(_) => true,
-            Piece::King(_) => (x.abs() < 2) && (y.abs() < 2),
-            Piece::Bishop(_) => x.abs() == y.abs(),
-            Piece::Rook(_) => x == 0 || y == 0,
-            Piece::Knight(_) => (x.abs() == 2 && y.abs() == 1) || (x.abs() == 1 && y.abs() == 2),
-            Piece::Pawn(player) => {
-                match player {
-                    Player::Player1 => {
-                        if from.1==1 { (x,y) == (0, 1) || (x,y) == (0,2) } else { (x,y) == (0, 1) }
-                    },
-                    Player::Player2 => {
-                        if from.1==1 { (x,y) == (0, -1) || (x,y) == (0,-2) } else { (x,y) == (0, -1) }
-                    }
-                }
-            }
-        }
-    }
-
-    fn player(&self) -> Player {
-        match self {
-            Piece::King(player) => *player,
-            Piece::Queen(player) => *player,
-            Piece::Rook(player) => *player,
-            Piece::Bishop(player) => *player,
-            Piece::Knight(player) => *player,
-            Piece::Pawn(player) => *player,
-        }
-    }
-}
-impl Display for Piece {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        match self {
-            Piece::King(_) => write!(f, " {} ", format!("K")),
-            Piece::Queen(_) => write!(f, " {} ", format!("Q")),
-            Piece::Rook(_) => write!(f, " {} ", format!("R")),
-            Piece::Bishop(_) => write!(f, " {} ", format!("B")),
-            Piece::Knight(_) => write!(f, " {} ", format!("N")),
-            Piece::Pawn(_) => write!(f, " {} ", format!("P")),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Copy)]
-enum Player {
+pub enum Player {
     Player1,
     Player2
+}
+impl Player {
+    pub fn num(&self) -> u8 {
+        match self {
+            Player::Player1 => 1,
+            Player::Player2 => 2,
+        }
+    }
 }
 
 impl Display for Player {
