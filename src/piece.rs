@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter, Error};
-
+use colored::{Colorize};
 use crate::game::{Game, Player};
 
 #[derive(Debug, Copy, Clone)]
@@ -64,12 +64,13 @@ impl Piece {
 impl Display for Piece {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self {
-            Piece::King(player) => write!(f, " K{} ", player.num()),
-            Piece::Queen(player) => write!(f, " Q{} ", player.num()),
-            Piece::Rook(player) => write!(f, " R{} ", player.num()),
-            Piece::Bishop(player) => write!(f, " B{} ", player.num()),
-            Piece::Knight(player) => write!(f, " N{} ", player.num()),
-            Piece::Pawn(player) => write!(f, " P{} ", player.num()),
+            // Piece::King(player) => write!(f, " K{} ", player.num()),
+            Piece::King(player) => write!(f, " {} ", if player.num() == 1 { format!("K").red().bold() } else { format!("K").blue().bold() }),
+            Piece::Queen(player) => write!(f, " {} ", if player.num() == 1 { format!("Q").red().bold() } else { format!("Q").blue().bold() }),
+            Piece::Rook(player) => write!(f, " {} ", if player.num() == 1 { format!("R").red().bold() } else { format!("R").blue().bold() }),
+            Piece::Bishop(player) => write!(f, " {} ", if player.num() == 1 { format!("B").red().bold() } else { format!("B").blue().bold() }),
+            Piece::Knight(player) => write!(f, " {} ", if player.num() == 1 { format!("N").red().bold() } else { format!("N").blue().bold() }),
+            Piece::Pawn(player) => write!(f, " {} ", if player.num() == 1 { format!("P").red().bold() } else { format!("P").blue().bold() }),
         }
     }
 }
