@@ -7,7 +7,8 @@ use crate::piece::Piece;
 pub struct Game {
     board: Vec<Vec<Option<Piece>>>,
     current_player: Player,
-    game_over: bool
+    game_over: bool,
+    last_move_double: bool
 }
 impl Game {
     pub fn new() -> Game {
@@ -19,32 +20,33 @@ impl Game {
             }
             board.push(row);
         }
-        board[0][0] = Some(Piece::Rook(Player::Player1));
-        board[0][1] = Some(Piece::Knight(Player::Player1));
-        board[0][2] = Some(Piece::Bishop(Player::Player1));
-        board[0][3] = Some(Piece::Queen(Player::Player1));
-        board[0][4] = Some(Piece::King(Player::Player1));
-        board[0][5] = Some(Piece::Bishop(Player::Player1));
-        board[0][6] = Some(Piece::Knight(Player::Player1));
-        board[0][7] = Some(Piece::Rook(Player::Player1));
+        board[0][0] = Some(Piece::Rook(Player::One));
+        board[0][1] = Some(Piece::Knight(Player::One));
+        board[0][2] = Some(Piece::Bishop(Player::One));
+        board[0][3] = Some(Piece::Queen(Player::One));
+        board[0][4] = Some(Piece::King(Player::One));
+        board[0][5] = Some(Piece::Bishop(Player::One));
+        board[0][6] = Some(Piece::Knight(Player::One));
+        board[0][7] = Some(Piece::Rook(Player::One));
         for i in 0..8 {
-            board[1][i] = Some(Piece::Pawn(Player::Player1));
+            board[1][i] = Some(Piece::Pawn(Player::One));
         }
-        board[7][0] = Some(Piece::Rook(Player::Player2));
-        board[7][1] = Some(Piece::Knight(Player::Player2));
-        board[7][2] = Some(Piece::Bishop(Player::Player2));
-        board[7][3] = Some(Piece::Queen(Player::Player2));
-        board[7][4] = Some(Piece::King(Player::Player2));
-        board[7][5] = Some(Piece::Bishop(Player::Player2));
-        board[7][6] = Some(Piece::Knight(Player::Player2));
-        board[7][7] = Some(Piece::Rook(Player::Player2));
+        board[7][0] = Some(Piece::Rook(Player::Two));
+        board[7][1] = Some(Piece::Knight(Player::Two));
+        board[7][2] = Some(Piece::Bishop(Player::Two));
+        board[7][3] = Some(Piece::Queen(Player::Two));
+        board[7][4] = Some(Piece::King(Player::Two));
+        board[7][5] = Some(Piece::Bishop(Player::Two));
+        board[7][6] = Some(Piece::Knight(Player::Two));
+        board[7][7] = Some(Piece::Rook(Player::Two));
         for i in 0..8 {
-            board[6][i] = Some(Piece::Pawn(Player::Player2));
+            board[6][i] = Some(Piece::Pawn(Player::Two));
         }
         Game {
             board,
-            current_player: Player::Player1,
-            game_over: false
+            current_player: Player::One,
+            game_over: false,
+            last_move_double: false
         }
     }
 
@@ -52,6 +54,7 @@ impl Game {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
         println!("Enter your move: (e.g. a2 a4)");
+
         let mut valid_move = false;
         while !valid_move {
             let mut input = String::new();
@@ -74,17 +77,7 @@ impl Game {
                             println!("You can't take your own piece!");
                             continue;
                         } else {
-                            println!("You took {}'s {}!", conquered.player(), match conquered {
-                                Piece::Pawn(_) => "pawn",
-                                Piece::Rook(_) => "rook",
-                                Piece::Knight(_) => "knight",
-                                Piece::Bishop(_) => "bishop",
-                                Piece::Queen(_) => "queen",
-                                Piece::King(_) => {
-                                    self.game_over = true;
-                                    "king"
-                                },
-                            });
+                            self.take(to, Some(piece));
                         }
                     }
                     self.board[to.1 as usize][to.0 as usize] = self.board[from.1 as usize][from.0 as usize];
@@ -103,8 +96,8 @@ impl Game {
             println!("{} wins!", self.current_player);
         }
         self.current_player = match self.current_player {
-            Player::Player1 => Player::Player2,
-            Player::Player2 => Player::Player1,
+            Player::One => Player::Two,
+            Player::Two => Player::One
         }
     }
 
@@ -127,8 +120,8 @@ impl Game {
             return false;
         }
         match spot.unwrap().player() {
-            Player::Player1 => matches!(self.current_player, Player::Player1),
-            Player::Player2 => matches!(self.current_player, Player::Player2),
+            Player::One => matches!(self.current_player, Player::One),
+            Player::Two => matches!(self.current_player, Player::Two),
         }
     }
 
@@ -160,15 +153,19 @@ impl Game {
     }
 
     pub(crate) fn check_spot_for_opponent(&self, to: (u8, u8)) -> bool {
-        !self.is_current_player(to)
+        if let Some(piece) = self.board[to.1 as usize][to.0 as usize] {
+            piece.player() != self.current_player
+        } else {
+            false
+        }
     }
 
-    pub(crate) fn take(&mut self, to: (u8, u8)) {
+    pub(crate) fn take(&mut self, to: (u8, u8), new: Option<Piece>) {
         let piece = self.board[to.1 as usize][to.0 as usize].unwrap();
-        self.board[to.1 as usize][to.0 as usize] = None;
+        self.board[to.1 as usize][to.0 as usize] = new;
         println!("You took {}'s {}!", match self.current_player {
-            Player::Player1 => Player::Player2,
-            Player::Player2 => Player::Player2,
+            Player::One => Player::Two,
+            Player::Two => Player::Two,
         }, match piece {
             Piece::Pawn(_) => "pawn",
             Piece::Rook(_) => "rook",
@@ -180,20 +177,38 @@ impl Game {
                 "king"
             }
         });
-    }    
+    }
+
+    pub(crate) fn can_en_passant(&self) -> bool {
+        self.last_move_double
+    }
+
+    pub(crate) fn set_can_enpassant(&mut self, last_move_double: bool) {
+        self.last_move_double = last_move_double;
+    }
+
+    pub(crate) fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
+        self.board[y as usize][x as usize]
+    }
+
+    // pub(crate) fn get(&self, x: u8, y: u8) -> Option<Piece> {
+    //     self.board[y as usize][x as usize]
+    // }
 }
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        writeln!(f, "{}", format!("\t    Player 1").red().bold())?;
+        writeln!(f, "{}", format!("\t      Player 1").red().bold())?;
         writeln!(f, "    a   b   c   d   e   f   g   h")?;
         self.board.iter().enumerate().for_each(|(i,row)| {
             writeln!(f, "  ---------------------------------").unwrap();
             write!(f, "{} ", i+1).unwrap();
-            row.iter().for_each(|piece| {
+            row.iter().enumerate().for_each(|(j, piece)| {
                 match piece {
-                    Some(piece) => write!(f, "|{}", piece),
-                    None => write!(f,"|   "),
+                    Some(piece) => write!(f, "|{}", if (i+j)%2==0 {format!("{piece}").on_black()} else {format!("{piece}").on_bright_black()}),
+                    None => write!(f,"|{}", if (i+j)%2==0 {format!("   ").on_black()} else {format!("   ").on_bright_black()}),
+                    // Some(piece) => write!(f, "|{piece}"),
+                    // None => write!(f,"|   "),
                 }.unwrap();
             });
             write!(f, "|").unwrap();
@@ -201,21 +216,21 @@ impl Display for Game {
         });
         writeln!(f, "  ---------------------------------")?;
         writeln!(f, "    a   b   c   d   e   f   g   h")?;
-        writeln!(f, "{}", format!("\t    Player 2").blue().bold())?;
+        writeln!(f, "{}", format!("\t      Player 2").blue().bold())?;
         Ok(())
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Player {
-    Player1,
-    Player2
+    One,
+    Two
 }
 impl Player {
     pub fn num(&self) -> u8 {
         match self {
-            Player::Player1 => 1,
-            Player::Player2 => 2,
+            Player::One => 1,
+            Player::Two => 2,
         }
     }
 }
@@ -223,8 +238,8 @@ impl Player {
 impl Display for Player {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self {
-            Player::Player1 => write!(f, "player 1"),
-            Player::Player2 => write!(f, "player 2"),
+            Player::One => write!(f, "player 1"),
+            Player::Two => write!(f, "player 2"),
         }
     }
 }
