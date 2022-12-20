@@ -1,8 +1,10 @@
 mod game;
+mod piece;
 use game::Game;
 
 fn main() {
     let mut play_again = true;
+    
     while play_again {
         play_again = launch_game();
     }
