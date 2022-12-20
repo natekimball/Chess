@@ -205,11 +205,10 @@ impl Game {
         }
         false
     }
-
-    // pub(crate) fn get(&self, x: u8, y: u8) -> Option<Piece> {
-    //     self.board[y as usize][x as usize]
-    // }
 }
+
+// TODO: make set method, use get method
+// TODO: implement checkmate
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {

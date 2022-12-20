@@ -17,9 +17,6 @@ impl Piece {
         if from == to {
             return false;
         }
-        if matches!(self, Piece::King(_)) && game.in_check(from) {
-            return false;
-        }
         let last_move = game.can_en_passant();
         game.set_can_enpassant(false);
 
