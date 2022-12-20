@@ -162,7 +162,22 @@ impl Game {
     }
 
     pub(crate) fn take(&mut self, to: (u8, u8)) {
+        let piece = self.board[to.1 as usize][to.0 as usize].unwrap();
         self.board[to.1 as usize][to.0 as usize] = None;
+        println!("You took {}'s {}!", match self.current_player {
+            Player::Player1 => Player::Player2,
+            Player::Player2 => Player::Player2,
+        }, match piece {
+            Piece::Pawn(_) => "pawn",
+            Piece::Rook(_) => "rook",
+            Piece::Knight(_) => "knight",
+            Piece::Bishop(_) => "bishop",
+            Piece::Queen(_) => "queen",
+            Piece::King(_) => {
+                self.game_over = true;
+                "king"
+            }
+        });
     }    
 }
 
