@@ -20,6 +20,8 @@ impl Piece {
         let last_move = game.can_en_passant();
         game.set_can_enpassant(false);
 
+        // clone board, try turn, check for check, then undo turn?
+
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         match self {
             Piece::Queen(_) => ((x == 0 || y == 0) && game.check_horiz(from, to)) || ((x.abs() == y.abs()) && game.check_diag(from, (x,y))),
