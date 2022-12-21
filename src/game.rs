@@ -178,15 +178,15 @@ impl Game {
         });
     }
 
-    pub(crate) fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
+    fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
         self.board[y as usize][x as usize]
     }
 
-    pub(crate) fn set(&mut self, (x, y): (u8, u8), piece: Option<Piece>) {
+    fn set(&mut self, (x, y): (u8, u8), piece: Option<Piece>) {
         self.board[y as usize][x as usize] = piece;
     }
 
-    pub(crate) fn in_check(&self, king: (u8, u8)) -> bool {
+    fn in_check(&self, king: (u8, u8)) -> bool {
         for i in 0..8 {
             for j in 0..8 {
                 if let Some(piece) = self.get((j,i)) {
@@ -305,8 +305,6 @@ impl Game {
             if self.check_horiz(from, (0,y)) {
                 if let Some(piece) = self.get((0,y)) {
                     if piece.is_rook() && piece.player() == self.current_player {
-                        // self.set((3,y), Some(Piece::Rook(self.current_player)));
-                        // self.set((0,y), None);
                         return true;
                     }
                 }
@@ -315,8 +313,6 @@ impl Game {
             if self.check_horiz(from, (7,y)) {
                 if let Some(piece) = self.get((7,y)) {
                     if piece.is_rook() && piece.player() == self.current_player {
-                        // self.set((3,y), Some(Piece::Rook(self.current_player)));
-                        // self.set((0,y), None);
                         return true;
                     }
                 }
@@ -335,12 +331,16 @@ impl Game {
         self.set(rook_from, None);
     }
 
-    pub(crate) fn set_last_double(&mut self, position: Option<(u8, u8)>) {
+    fn set_last_double(&mut self, position: Option<(u8, u8)>) {
         self.last_double = position;
     }
 
     pub(crate) fn get_last_double(&self) -> Option<(u8, u8)> {
         self.last_double
+    }
+
+    pub(crate) fn square_is_none(&self, to: (u8, u8)) -> bool {
+        self.get(to).is_none()
     }
 }
 
