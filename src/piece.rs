@@ -99,7 +99,7 @@ impl Piece {
                     Player::One => 5,
                     Player::Two => 2
                 };
-                let single = (x,y) == (0, sign*1) && game.get(to).is_none();
+                let single = (x,y) == (0, sign*1) && game.square_is_none(to);
                 let double = from.1==(end as i8-sign*4) as u8 && (x,y) == (0, sign*2) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*3) as u8));
                 if double {
                     return Move::Double(to);
