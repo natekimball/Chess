@@ -23,7 +23,7 @@ impl Piece {
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         match self {
             Piece::Queen(_) => ((x == 0 || y == 0) && game.check_horiz(from, to)) || ((x.abs() == y.abs()) && game.check_diag(from, (x,y))),
-            Piece::King(_) => (x.abs() < 2) && (y.abs() < 2),
+            Piece::King(_) => (x.abs() < 2) && (y.abs() < 2) || game.castle(from, to),
             Piece::Bishop(_) => (x.abs() == y.abs()) && game.check_diag(from, (x,y)),
             Piece::Rook(_) => (x == 0 || y == 0) && game.check_horiz(from, to),
             Piece::Knight(_) => (x.abs() == 2 && y.abs() == 1) || (x.abs() == 1 && y.abs() == 2),
@@ -71,6 +71,10 @@ impl Piece {
 
     pub(crate) fn is_king(&self) -> bool {
         matches!(self, Piece::King(_))
+    }
+
+    pub(crate) fn is_rook(&self) -> bool {
+        matches!(self, Piece::Rook(_))
     }
 }
 

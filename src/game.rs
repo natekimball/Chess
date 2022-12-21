@@ -56,12 +56,12 @@ impl Game {
                     self.set(from, None);
                 }
                 if self.player_in_check() {
-                    println!("You can't put yourself in check!");
+                    println!("Wait you can't put yourself in check! go again.");
                     self.set(from, self.get(to));
                     self.set(to, conquered);
                     continue;
                 }
-                if to.1 == 7 || to.1 == 0 && piece.unwrap() == Piece::Pawn(self.current_player) {
+                if (to.1 == 7 || to.1 == 0) && piece.unwrap() == Piece::Pawn(self.current_player) {
                     self.promote_piece(to);
                 }
                 valid_move = true;
@@ -281,6 +281,39 @@ impl Game {
             break;
         }
         self.set(position, Some(piece));
+    }
+
+    pub(crate) fn castle(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
+        if self.in_check(from) {
+            return false;
+        }
+        let (x,y) = from;
+        let (new_x, new_y) = to;
+        if y != new_y || x != 4 {
+            return false;
+        }
+        if new_x == 2 {
+            if self.check_horiz(from, (0,y)) {
+                if let Some(piece) = self.get((0,y)) {
+                    if piece.is_rook() && piece.player() == self.current_player {
+                        self.set((3,y), Some(Piece::Rook(self.current_player)));
+                        self.set((0,y), None);
+                        return true;
+                    }
+                }
+            }
+        } else if new_x == 6 {
+            if self.check_horiz(from, (7,y)) {
+                if let Some(piece) = self.get((7,y)) {
+                    if piece.is_rook() && piece.player() == self.current_player {
+                        self.set((3,y), Some(Piece::Rook(self.current_player)));
+                        self.set((0,y), None);
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 
