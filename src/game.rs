@@ -1,12 +1,12 @@
 use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
 use colored::Colorize;
-use crate::piece::Piece;
+use crate::piece::{Piece, Move};
 
 pub struct Game {
     board: Vec<Vec<Option<Piece>>>,
     current_player: Player,
     game_over: bool,
-    last_move_double: bool
+    last_double: Option<(u8, u8)>
 }
 
 impl Game {
@@ -21,7 +21,7 @@ impl Game {
             board,
             current_player: Player::One,
             game_over: false,
-            last_move_double: false
+            last_double: None
         }
     }
 
@@ -39,7 +39,8 @@ impl Game {
             if self.is_current_player(from) {
                 let piece = self.get(from);
                 let conquered = self.get(to);
-                if !piece.unwrap().is_valid(from, to, self) {
+                let move_status = piece.unwrap().valid_move(from, to, self);
+                if move_status == Move::Invalid {
                     println!("Invalid move! go again.");
                     continue;
                 }
@@ -60,6 +61,22 @@ impl Game {
                     self.set(from, self.get(to));
                     self.set(to, conquered);
                     continue;
+                } else {
+                    self.set_last_double(None);
+                    match move_status {
+                        Move::Normal => (),
+                        Move::Double(position) => {
+                            self.set_last_double(Some(position));
+                        },
+                        Move::Castle => {
+                            self.castle(to);
+                        },
+                        Move::EnPassant(position) => {
+                            self.take(position, None);
+                        },
+                        Move::Invalid => unreachable!()
+                    }
+                    
                 }
                 if (to.1 == 7 || to.1 == 0) && piece.unwrap() == Piece::Pawn(self.current_player) {
                     self.promote_piece(to);
@@ -161,14 +178,6 @@ impl Game {
         });
     }
 
-    pub(crate) fn can_en_passant(&self) -> bool {
-        self.last_move_double
-    }
-
-    pub(crate) fn set_can_enpassant(&mut self, last_move_double: bool) {
-        self.last_move_double = last_move_double;
-    }
-
     pub(crate) fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
         self.board[y as usize][x as usize]
     }
@@ -177,12 +186,12 @@ impl Game {
         self.board[y as usize][x as usize] = piece;
     }
 
-    pub(crate) fn in_check(&mut self, king: (u8, u8)) -> bool {
+    pub(crate) fn in_check(&self, king: (u8, u8)) -> bool {
         for i in 0..8 {
             for j in 0..8 {
                 if let Some(piece) = self.get((j,i)) {
                     if piece.player() != self.current_player {
-                        if piece.is_valid((j as u8,i as u8), king, self) {
+                        if piece.valid_move((j as u8,i as u8), king, self) != Move::Invalid {
                             return true;
                         }
                     }
@@ -283,7 +292,7 @@ impl Game {
         self.set(position, Some(piece));
     }
 
-    pub(crate) fn castle(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
+    pub(crate) fn can_castle(&self, from: (u8, u8), to: (u8, u8)) -> bool {
         if self.in_check(from) {
             return false;
         }
@@ -296,8 +305,8 @@ impl Game {
             if self.check_horiz(from, (0,y)) {
                 if let Some(piece) = self.get((0,y)) {
                     if piece.is_rook() && piece.player() == self.current_player {
-                        self.set((3,y), Some(Piece::Rook(self.current_player)));
-                        self.set((0,y), None);
+                        // self.set((3,y), Some(Piece::Rook(self.current_player)));
+                        // self.set((0,y), None);
                         return true;
                     }
                 }
@@ -306,14 +315,32 @@ impl Game {
             if self.check_horiz(from, (7,y)) {
                 if let Some(piece) = self.get((7,y)) {
                     if piece.is_rook() && piece.player() == self.current_player {
-                        self.set((3,y), Some(Piece::Rook(self.current_player)));
-                        self.set((0,y), None);
+                        // self.set((3,y), Some(Piece::Rook(self.current_player)));
+                        // self.set((0,y), None);
                         return true;
                     }
                 }
             }
         }
         false
+    }
+
+    fn castle(&mut self, king: (u8, u8)) {
+        let (rook_from, rook_to) = match king.0 {
+            6 => ((7, king.1), (5, king.1)),
+            2 => ((0, king.1), (3, king.1)),
+            _ => unreachable!()
+        };
+        self.set(rook_to, self.get(rook_from));
+        self.set(rook_from, None);
+    }
+
+    pub(crate) fn set_last_double(&mut self, position: Option<(u8, u8)>) {
+        self.last_double = position;
+    }
+
+    pub(crate) fn get_last_double(&self) -> Option<(u8, u8)> {
+        self.last_double
     }
 }
 
