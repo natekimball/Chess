@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter, Error};
+use std::{fmt::{Display, Formatter, Error}};
 use colored::{Colorize};
 use crate::game::{Game, Player};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Piece {
     King(Player),
     Queen(Player),
@@ -14,7 +14,7 @@ pub enum Piece {
 
 impl Piece {
     pub fn is_valid(&self, from: (u8,u8), to: (u8, u8), game: &mut Game) -> bool {
-        if from == to {
+        if from == to || to.0 > 7 || to.1 > 7 || from.0 > 7 || from.1 > 7 {
             return false;
         }
         let last_move = game.can_en_passant();
@@ -36,7 +36,7 @@ impl Piece {
                     Player::One => 5,
                     Player::Two => 2
                 };
-                let single = (x,y) == (0, sign*1) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*2) as u8));
+                let single = (x,y) == (0, sign*1) && game.get(to).is_none();
                 let double = from.1==(end as i8-sign*4) as u8 && (x,y) == (0, sign*2) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*3) as u8));
                 if double {
                     game.set_can_enpassant(true);

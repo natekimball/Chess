@@ -61,6 +61,9 @@ impl Game {
                     self.set(to, conquered);
                     continue;
                 }
+                if to.1 == 7 || to.1 == 0 && piece.unwrap() == Piece::Pawn(self.current_player) {
+                    self.promote_piece(to);
+                }
                 valid_move = true;
             } else {
                 println!("You must move one of your own pieces!");
@@ -210,10 +213,28 @@ impl Game {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         let mut input = input.split_whitespace();
-        let from = input.next().unwrap().to_ascii_lowercase();
-        let to = input.next().unwrap().to_ascii_lowercase();
-        let from = (from.chars().nth(0).unwrap() as u8 - 'a' as u8, from.chars().nth(1).unwrap() as u8 - '1' as u8);
-        let to = (to.chars().nth(0).unwrap() as u8 - 'a' as u8, to.chars().nth(1).unwrap() as u8 - '1' as u8);
+        let from = input.next();
+        let to = input.next();
+        if from.is_none() || to.is_none() {
+            println!("Invalid input! Try again.");
+            return self.get_move();
+        }
+        let from = from.unwrap().to_ascii_lowercase();
+        let to = to.unwrap().to_ascii_lowercase();
+        let from = (from.chars().nth(0), from.chars().nth(1));
+        let to = (to.chars().nth(0), to.chars().nth(1));
+        if from.0.is_none() || from.1.is_none() || to.0.is_none() || to.1.is_none() {
+            println!("Invalid input! Try again.");
+            return self.get_move();
+        }
+        let from = (from.0.unwrap() as i8 - 'a' as i8, from.1.unwrap() as i8 - '1' as i8);
+        let to = (to.0.unwrap() as i8 - 'a' as i8, to.1.unwrap() as i8 - '1' as i8);
+        if from.0 < 0 || from.1 < 0 || from.0 > 7 || from.1 > 7 || to.0 < 0 || to.1 < 0 || to.0 > 7 || to.1 > 7  {
+            println!("Invalid input! Try again.");
+            return self.get_move();
+        }
+        let from = (from.0 as u8, from.1 as u8);
+        let to = (to.0 as u8, to.1 as u8);
         (from, to)
     }
 
@@ -239,6 +260,27 @@ impl Game {
             }
         }
         true
+    }
+
+    fn promote_piece(&mut self, position: (u8, u8)) {
+        println!("Pawn promotion! Enter a piece to promote to: (q, r, b, n)");
+        let mut input = String::new();
+        let piece;
+        loop {
+            io::stdin().read_line(&mut input).unwrap();
+            piece = match input.trim().to_ascii_lowercase().as_str() {
+                "q" => Piece::Queen(self.current_player),
+                "r" => Piece::Rook(self.current_player),
+                "b" => Piece::Bishop(self.current_player),
+                "n" => Piece::Knight(self.current_player),
+                _ => {
+                    println!("Invalid piece! Enter another.");
+                    continue;
+                }
+            };
+            break;
+        }
+        self.set(position, Some(piece));
     }
 }
 
