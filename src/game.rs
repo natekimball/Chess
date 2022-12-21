@@ -52,14 +52,14 @@ impl Game {
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
-        if self.in_check(self.get_king()) {
+        if self.player_in_check() {
             println!("You're in check!");
         }
         println!("Enter your move: (e.g. a2 a4)");
 
         let mut valid_move = false;
         while !valid_move {
-            let (from, to) = get_move();
+            let (from, to) = self.get_move();
             if self.is_current_player(from) {
                 // if self.board[from.1 as usize][from.0 as usize].as_ref().unwrap().is_valid(from, to, self) {
                 let piece = self.get(from);
@@ -105,6 +105,7 @@ impl Game {
     }
 
     pub fn is_over(&self) -> bool {
+        //self.game_over = self.game_over || self.checkmate()
         self.game_over
     }
 
@@ -201,7 +202,10 @@ impl Game {
     pub(crate) fn in_check(&mut self, king: (u8, u8)) -> bool {
         for i in 0..8 {
             for j in 0..8 {
-                if let Some(piece) = self.board[i][j] {
+                if (j, i) == king {
+                    continue;
+                }
+                if let Some(piece) = self.get((j,i)) {
                     if piece.player() != self.current_player {
                         if piece.is_valid((i as u8,j as u8), king, self) {
                             return true;
@@ -213,11 +217,11 @@ impl Game {
         false
     }
 
-    fn get_king(&self) -> (u8, u8) {
+    fn get_king(&self, player: Player) -> (u8, u8) {
         for i in 0..8 {
             for j in 0..8 {
                 if let Some(piece) = self.get((j,i)) {
-                    if piece.player() == self.current_player && piece.is_king() {
+                    if piece.player() == player && piece.is_king() {
                         return (j as u8, i as u8);
                     }
                 }
@@ -227,23 +231,46 @@ impl Game {
     }
 
     fn player_in_check(&mut self) -> bool {
-        self.in_check(self.get_king())
+        self.in_check(self.get_king(self.current_player))
+    }
+
+    fn get_move(&self) -> ((u8, u8), (u8, u8)) {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        let mut input = input.split_whitespace();
+        let from = input.next().unwrap().to_ascii_lowercase();
+        let to = input.next().unwrap().to_ascii_lowercase();
+        let from = (from.chars().nth(0).unwrap() as u8 - 'a' as u8, from.chars().nth(1).unwrap() as u8 - '1' as u8);
+        let to = (to.chars().nth(0).unwrap() as u8 - 'a' as u8, to.chars().nth(1).unwrap() as u8 - '1' as u8);
+        (from, to)
+    }
+
+    fn checkmate(&mut self) -> bool {
+        let p1 = self.player_checkmate(Player::One);
+        let p2 = self.player_checkmate(Player::Two);
+        p1||p2
+    }
+
+    fn player_checkmate(&mut self, player: Player) -> bool {
+        let (x,y) = self.get_king(player);
+        if !self.player_in_check() {
+            return false;
+        }
+        for (i, j) in [(0,1), (1,0), (0,-1), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)] {
+            let (new_x, new_y) = (x as i8 + i, y as i8 + j);
+            if new_x < 0 || new_x >= 8 || new_y < 0 || new_y >= 8 {
+                continue;
+            }
+            let (new_x, new_y) = (new_x as u8, new_y as u8);
+            if !self.is_current_player((new_x,new_y)) && !self.in_check((new_x,new_y)) {
+                return false;
+            }
+        }
+        true
     }
 }
 
-fn get_move() -> ((u8, u8), (u8, u8)) {
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    let mut input = input.split_whitespace();
-    let from = input.next().unwrap().to_ascii_lowercase();
-    let to = input.next().unwrap().to_ascii_lowercase();
-    let from = (from.chars().nth(0).unwrap() as u8 - 'a' as u8, from.chars().nth(1).unwrap() as u8 - '1' as u8);
-    let to = (to.chars().nth(0).unwrap() as u8 - 'a' as u8, to.chars().nth(1).unwrap() as u8 - '1' as u8);
-    (from, to)
-}
-
-// TODO: make set method, use get method
-// TODO: implement check and checkmate
+// TODO: implement checkmate
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
