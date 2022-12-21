@@ -177,12 +177,9 @@ impl Game {
     pub(crate) fn in_check(&mut self, king: (u8, u8)) -> bool {
         for i in 0..8 {
             for j in 0..8 {
-                if (j, i) == king {
-                    continue;
-                }
                 if let Some(piece) = self.get((j,i)) {
                     if piece.player() != self.current_player {
-                        if piece.is_valid((i as u8,j as u8), king, self) {
+                        if piece.is_valid((j as u8,i as u8), king, self) {
                             return true;
                         }
                     }
