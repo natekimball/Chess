@@ -11,36 +11,12 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Game {
-        let mut board = Vec::new();
-        for _ in 0..8 {
-            let mut row = Vec::new();
-            for _ in 0..8 {
-                row.push(None);
-            }
-            board.push(row);
-        }
-        board[0][0] = Some(Piece::Rook(Player::One));
-        board[0][1] = Some(Piece::Knight(Player::One));
-        board[0][2] = Some(Piece::Bishop(Player::One));
-        board[0][3] = Some(Piece::Queen(Player::One));
-        board[0][4] = Some(Piece::King(Player::One));
-        board[0][5] = Some(Piece::Bishop(Player::One));
-        board[0][6] = Some(Piece::Knight(Player::One));
-        board[0][7] = Some(Piece::Rook(Player::One));
-        for i in 0..8 {
-            board[1][i] = Some(Piece::Pawn(Player::One));
-        }
-        board[7][0] = Some(Piece::Rook(Player::Two));
-        board[7][1] = Some(Piece::Knight(Player::Two));
-        board[7][2] = Some(Piece::Bishop(Player::Two));
-        board[7][3] = Some(Piece::Queen(Player::Two));
-        board[7][4] = Some(Piece::King(Player::Two));
-        board[7][5] = Some(Piece::Bishop(Player::Two));
-        board[7][6] = Some(Piece::Knight(Player::Two));
-        board[7][7] = Some(Piece::Rook(Player::Two));
-        for i in 0..8 {
-            board[6][i] = Some(Piece::Pawn(Player::Two));
-        }
+        let mut board = vec![vec![None; 8]; 8];
+        board[0] = vec![Some(Piece::Rook(Player::One)), Some(Piece::Knight(Player::One)), Some(Piece::Bishop(Player::One)), Some(Piece::Queen(Player::One)), Some(Piece::King(Player::One)), Some(Piece::Bishop(Player::One)), Some(Piece::Knight(Player::One)), Some(Piece::Rook(Player::One))];
+        board[1] = vec![Some(Piece::Pawn(Player::One)); 8];
+        
+        board[7] = vec![Some(Piece::Rook(Player::Two)), Some(Piece::Knight(Player::Two)), Some(Piece::Bishop(Player::Two)), Some(Piece::Queen(Player::Two)), Some(Piece::King(Player::Two)), Some(Piece::Bishop(Player::Two)), Some(Piece::Knight(Player::Two)), Some(Piece::Rook(Player::Two))];
+        board[6] = vec![Some(Piece::Pawn(Player::Two)); 8];
         Game {
             board,
             current_player: Player::One,
@@ -61,7 +37,6 @@ impl Game {
         while !valid_move {
             let (from, to) = self.get_move();
             if self.is_current_player(from) {
-                // if self.board[from.1 as usize][from.0 as usize].as_ref().unwrap().is_valid(from, to, self) {
                 let piece = self.get(from);
                 let conquered = self.get(to);
                 if !piece.unwrap().is_valid(from, to, self) {
