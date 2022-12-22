@@ -1,4 +1,4 @@
-use std::{fmt::{Display, Formatter, Error}};
+use std::{fmt::{Display, Formatter, Error, format}, cmp::{min, max}};
 use colored::{Colorize};
 use crate::game::{Game, Player};
 
@@ -94,17 +94,60 @@ impl Piece {
     pub(crate) fn is_rook(&self) -> bool {
         matches!(self, Piece::Rook(_))
     }
+
+    pub(crate) fn is_knight(&self) -> bool {
+        matches!(self, Piece::Knight(_))
+    }
+
+    pub(crate) fn can_block_path(&self, friendly: (u8, u8), enemy: (u8, u8), king: (u8, u8), game: &Game) -> Vec<(u8,u8)> {
+        let mut spots = Vec::new();
+        if self.valid_move(friendly, enemy, game) == Move::Normal {
+            spots.push(enemy);
+        }
+        if game.square_is_knight(enemy) {
+            return spots;
+        }
+        let delta = (enemy.0 as i8 - friendly.0 as i8, enemy.1 as i8 - friendly.1 as i8);
+        let signs = (delta.0.signum(), delta.1.signum());
+
+        if delta.0 == 0 {
+            for i in min(king.1,enemy.1)..=max(king.1,enemy.1) {
+                if self.valid_move(friendly, (friendly.0, i), game) != Move::Invalid && i != friendly.1 && i != enemy.1 {
+                    spots.push((friendly.0, i));
+                }
+            }
+        } else if delta.1 == 0 {
+            for i in min(king.0,enemy.0)..=max(king.0,enemy.0) {
+                if self.valid_move(friendly, (i, friendly.1), game) != Move::Invalid && i != friendly.0 && i != enemy.0 {
+                    spots.push((i, friendly.1));
+                }
+            }
+        } else {
+            for i in 1..delta.0.abs() as u8 {
+                if self.valid_move(friendly, ((friendly.0 as i8 + signs.0 * i as i8) as u8, (friendly.1 as i8 + signs.1 * i as i8) as u8), game) != Move::Invalid {
+                    spots.push(((friendly.0 as i8 + signs.0 * i as i8) as u8, (friendly.1 as i8 + signs.1 * i as i8) as u8));
+                }
+            }
+        }
+        spots
+    }
 }
 
 impl Display for Piece {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self {
-            Piece::King(player) => write!(f, " {} ", if *player == Player::One { format!("K").red().bold() } else { format!("K").blue().bold() }),
-            Piece::Queen(player) => write!(f, " {} ", if *player == Player::One { format!("Q").red().bold() } else { format!("Q").blue().bold() }),
-            Piece::Rook(player) => write!(f, " {} ", if *player == Player::One { format!("R").red().bold() } else { format!("R").blue().bold() }),
-            Piece::Bishop(player) => write!(f, " {} ", if *player == Player::One { format!("B").red().bold() } else { format!("B").blue().bold() }),
-            Piece::Knight(player) => write!(f, " {} ", if *player == Player::One { format!("N").red().bold() } else { format!("N").blue().bold() }),
-            Piece::Pawn(player) => write!(f, " {} ", if *player == Player::One { format!("P").red().bold() } else { format!("P").blue().bold() }),
+            Piece::King(player) => write!(f, " {}  ", if *player == Player::One { format!("♔").white().bold() } else { format!("♚").black().bold() }),
+            Piece::Queen(player) => write!(f, " {}  ", if *player == Player::One { format!("♕").white().bold() } else { format!("♛").black().bold() }),
+            Piece::Rook(player) => write!(f, " {}  ", if *player == Player::One { format!("♖").white().bold() } else { format!("♜").black().bold() }),
+            Piece::Bishop(player) => write!(f, " {}  ", if *player == Player::One { format!("♗").white().bold() } else { format!("♝").black().bold() }),
+            Piece::Knight(player) => write!(f, " {}  ", if *player == Player::One { format!("♘").white().bold() } else { format!("♞").black().bold() }),
+            Piece::Pawn(player) => write!(f, " {}  ", if *player == Player::One { format!("♙").white().bold() } else { format!("♟").black().bold() }),
+            // Piece::King(player) => write!(f, " {} ", if *player == Player::One { format!("K").red().bold() } else { format!("K").blue().bold() }),
+            // Piece::Queen(player) => write!(f, " {} ", if *player == Player::One { format!("Q").red().bold() } else { format!("Q").blue().bold() }),
+            // Piece::Rook(player) => write!(f, " {} ", if *player == Player::One { format!("R").red().bold() } else { format!("R").blue().bold() }),
+            // Piece::Bishop(player) => write!(f, " {} ", if *player == Player::One { format!("B").red().bold() } else { format!("B").blue().bold() }),
+            // Piece::Knight(player) => write!(f, " {} ", if *player == Player::One { format!("N").red().bold() } else { format!("N").blue().bold() }),
+            // Piece::Pawn(player) => write!(f, " {} ", if *player == Player::One { format!("P").red().bold() } else { format!("P").blue().bold() }),
         }
     }
 }
