@@ -1,4 +1,4 @@
-use std::{fmt::{Display, Formatter, Error, format}, cmp::{min, max}};
+use std::{fmt::{Display, Formatter, Error}, cmp::{min, max}};
 use colored::{Colorize};
 use crate::game::{Game, Player};
 
