@@ -136,12 +136,12 @@ impl Piece {
 impl Display for Piece {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self {
-            Piece::King(player) => write!(f, " {}  ", if *player == Player::One { format!("♔").white().bold() } else { format!("♚").black().bold() }),
-            Piece::Queen(player) => write!(f, " {}  ", if *player == Player::One { format!("♕").white().bold() } else { format!("♛").black().bold() }),
-            Piece::Rook(player) => write!(f, " {}  ", if *player == Player::One { format!("♖").white().bold() } else { format!("♜").black().bold() }),
-            Piece::Bishop(player) => write!(f, " {}  ", if *player == Player::One { format!("♗").white().bold() } else { format!("♝").black().bold() }),
-            Piece::Knight(player) => write!(f, " {}  ", if *player == Player::One { format!("♘").white().bold() } else { format!("♞").black().bold() }),
-            Piece::Pawn(player) => write!(f, " {}  ", if *player == Player::One { format!("♙").white().bold() } else { format!("♟").black().bold() }),
+            Piece::King(player) => write!(f, " {}  ", if *player == Player::One { format!("♔").black() } else { format!("♚").white().bold() }),
+            Piece::Queen(player) => write!(f, " {}  ", if *player == Player::One { format!("♕").black() } else { format!("♛").white().bold() }),
+            Piece::Rook(player) => write!(f, " {}  ", if *player == Player::One { format!("♖").black() } else { format!("♜").white().bold() }),
+            Piece::Bishop(player) => write!(f, " {}  ", if *player == Player::One { format!("♗").black() } else { format!("♝").white().bold() }),
+            Piece::Knight(player) => write!(f, " {}  ", if *player == Player::One { format!("♘").black() } else { format!("♞").white().bold() }),
+            Piece::Pawn(player) => write!(f, " {}  ", if *player == Player::One { format!("♙").black() } else { format!("♟").white().bold() }),
             // Piece::King(player) => write!(f, " {} ", if *player == Player::One { format!("K").red().bold() } else { format!("K").blue().bold() }),
             // Piece::Queen(player) => write!(f, " {} ", if *player == Player::One { format!("Q").red().bold() } else { format!("Q").blue().bold() }),
             // Piece::Rook(player) => write!(f, " {} ", if *player == Player::One { format!("R").red().bold() } else { format!("R").blue().bold() }),
