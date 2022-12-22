@@ -25,6 +25,15 @@ impl Game {
         }
     }
 
+    fn test_game(board: Vec<Vec<Option<Piece>>>, player: Player) -> Game {
+        Game {
+            board,
+            current_player: player,
+            game_over: false,
+            last_double: None
+        }
+    }
+
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
@@ -99,8 +108,8 @@ impl Game {
         }
     }
 
-    pub fn is_over(&self) -> bool {
-        //self.game_over = self.game_over || self.checkmate()
+    pub fn is_over(&mut self) -> bool {
+        self.game_over = self.game_over || self.checkmate();
         self.game_over
     }
 
@@ -247,16 +256,58 @@ impl Game {
         (from, to)
     }
 
-    fn checkmate(&mut self) -> bool {
-        let p1 = self.player_checkmate(Player::One);
-        let p2 = self.player_checkmate(Player::Two);
-        p1||p2
-    }
+    // fn checkmate(&mut self) -> bool {
+    //     //do you need to check both or just current player/opponent?
+    //     let p1 = self.player_checkmate(Player::One);
+    //     let p2 = self.player_checkmate(Player::Two);
+    //     p1||p2
+    // }
 
-    fn player_checkmate(&mut self, player: Player) -> bool {
-        let (x,y) = self.get_king(player);
-        if !self.player_in_check() {
+    fn checkmate(&mut self) -> bool {
+        let (x,y) = self.get_king(self.current_player);
+        if !self.in_check((x,y)) {
             return false;
+        }
+        // for every enemy that can attack king {
+        //     for every square in path from enemy to king {
+        //         for every friendly piece {
+        //             if friendly piece can move to square {
+        //                 return false;
+        //             }
+        //         }
+        //     }
+        // }
+        for i in 0..8 {
+            for j in 0..8 {
+                if let Some(enemy) = self.get((j,i)) {
+                    if enemy.player() != self.current_player {
+                        //for every enemy piece
+                        if enemy.valid_move((j as u8,i as u8), (x,y), self) != Move::Invalid {
+                            //if it puts the king in check
+                            for k in 0..8 {
+                                for l in 0..8 {
+                                    if let Some(friendly) = self.get((l,k)) {
+                                        if friendly.player() == self.current_player {
+                                            //for every friendly piece, see if it can block the path and get us out of check
+                                            for square in friendly.can_block_path((l,k), (j,i), (x,y), self) {
+                                                let old = self.get(square);
+                                                self.set(square, Some(friendly));
+                                                self.set((l,k), None);
+                                                let still_in_check = self.in_check((x,y));
+                                                self.set((l,k), Some(friendly));
+                                                self.set(square, old);
+                                                if !still_in_check {
+                                                    return false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         for (i, j) in [(0,1), (1,0), (0,-1), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)] {
             let (new_x, new_y) = (x as i8 + i, y as i8 + j);
@@ -342,6 +393,18 @@ impl Game {
     pub(crate) fn get_last_double(&self) -> Option<(u8, u8)> {
         self.last_double
     }
+
+    pub(crate) fn square_is_none(&self, to: (u8, u8)) -> bool {
+        self.get(to).is_none()
+    }
+
+    pub(crate) fn square_is_knight(&self, to: (u8, u8)) -> bool {
+        if let Some(piece) = self.get(to) {
+            piece.is_knight()
+        } else {
+            false
+        }
+    }
 }
 
 // TODO: implement checkmate
@@ -383,5 +446,67 @@ impl Display for Player {
             Player::One => write!(f, "player 1"),
             Player::Two => write!(f, "player 2"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn checkmate_no_friendlies() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(Piece::King(Player::One));
+        board[0][1] = Some(Piece::Queen(Player::Two));
+        board[1][0] = Some(Piece::Queen(Player::Two));
+
+        let mut game = Game::test_game(board, Player::One);
+        assert!(game.checkmate());
+    }
+
+    #[test]
+    fn checkmate_no_friendlies2() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(Piece::King(Player::One));
+        board[0][1] = Some(Piece::Queen(Player::Two));
+        board[1][0] = Some(Piece::Rook(Player::Two));
+        board[0][2] = Some(Piece::Queen(Player::Two));
+
+        let mut game = Game::test_game(board, Player::One);
+        assert!(game.checkmate());
+    }
+
+    #[test]
+    fn no_checkmate_no_friendlies() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(Piece::King(Player::One));
+        board[0][1] = Some(Piece::Rook(Player::Two));
+        board[1][0] = Some(Piece::Rook(Player::Two));
+
+        let mut game = Game::test_game(board, Player::One);
+        assert!(!game.checkmate());
+    }
+
+    #[test]
+    fn no_checkmate_blockable() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(Piece::King(Player::One));
+        board[0][1] = Some(Piece::Knight(Player::One));
+        board[2][0] = Some(Piece::Queen(Player::Two));
+
+        let mut game = Game::test_game(board, Player::One);
+        assert!(!game.checkmate());
+    }
+
+    #[test]
+    fn checkmate_unblockable() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(Piece::King(Player::One));
+        board[0][1] = Some(Piece::Rook(Player::One));
+        board[2][0] = Some(Piece::Queen(Player::Two));
+        
+        let mut game = Game::test_game(board, Player::One);
+        print!("{game}");
+        assert!(game.checkmate());
     }
 }
