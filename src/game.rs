@@ -187,11 +187,11 @@ impl Game {
         });
     }
 
-    pub(crate) fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
+    fn get(&self, (x, y): (u8, u8)) -> Option<Piece> {
         self.board[y as usize][x as usize]
     }
 
-    pub(crate) fn set(&mut self, (x, y): (u8, u8), piece: Option<Piece>) {
+    fn set(&mut self, (x, y): (u8, u8), piece: Option<Piece>) {
         self.board[y as usize][x as usize] = piece;
     }
 
@@ -256,16 +256,17 @@ impl Game {
         (from, to)
     }
 
-    // fn checkmate(&mut self) -> bool {
-    //     //do you need to check both or just current player/opponent?
-    //     let p1 = self.player_checkmate(Player::One);
-    //     let p2 = self.player_checkmate(Player::Two);
-    //     p1||p2
-    // }
+    fn is_square_king(&self, square: (u8, u8)) -> bool {
+        if let Some(piece) = self.get(square) {
+            piece.is_king()
+        } else {
+            false
+        }
+    }
 
     fn checkmate(&mut self) -> bool {
-        let (x,y) = self.get_king(self.current_player);
-        if !self.in_check((x,y)) {
+        let mut king = self.get_king(self.current_player);
+        if !self.in_check(king) {
             return false;
         }
         // for every enemy that can attack king {
@@ -282,21 +283,27 @@ impl Game {
                 if let Some(enemy) = self.get((j,i)) {
                     if enemy.player() != self.current_player {
                         //for every enemy piece
-                        if enemy.valid_move((j as u8,i as u8), (x,y), self) != Move::Invalid {
+                        if enemy.valid_move((j as u8,i as u8), king, self) != Move::Invalid {
                             //if it puts the king in check
                             for k in 0..8 {
                                 for l in 0..8 {
                                     if let Some(friendly) = self.get((l,k)) {
                                         if friendly.player() == self.current_player {
                                             //for every friendly piece, see if it can block the path and get us out of check
-                                            for square in friendly.can_block_path((l,k), (j,i), (x,y), self) {
+                                            for square in friendly.can_block_path((l,k), (j,i), king, self) {
                                                 let old = self.get(square);
                                                 self.set(square, Some(friendly));
                                                 self.set((l,k), None);
-                                                let still_in_check = self.in_check((x,y));
+                                                if !self.is_square_king(king) {
+                                                    king = self.get_king(self.current_player);
+                                                }
+                                                let still_in_check = self.in_check(king);
+                                                println!("{self}");
+                                                println!("{still_in_check}");
                                                 self.set((l,k), Some(friendly));
                                                 self.set(square, old);
                                                 if !still_in_check {
+                                                    print!("friendly piece at ({},{}) can block enemy piece at ({},{}) and get us out of check", l,k,square.0, square.1);
                                                     return false;
                                                 }
                                             }
@@ -309,6 +316,8 @@ impl Game {
                 }
             }
         }
+
+        let (x,y) = king;
         for (i, j) in [(0,1), (1,0), (0,-1), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)] {
             let (new_x, new_y) = (x as i8 + i, y as i8 + j);
             if new_x < 0 || new_x >= 8 || new_y < 0 || new_y >= 8 {
@@ -356,8 +365,6 @@ impl Game {
             if self.check_horiz(from, (0,y)) {
                 if let Some(piece) = self.get((0,y)) {
                     if piece.is_rook() && piece.player() == self.current_player {
-                        // self.set((3,y), Some(Piece::Rook(self.current_player)));
-                        // self.set((0,y), None);
                         return true;
                     }
                 }
@@ -366,8 +373,6 @@ impl Game {
             if self.check_horiz(from, (7,y)) {
                 if let Some(piece) = self.get((7,y)) {
                     if piece.is_rook() && piece.player() == self.current_player {
-                        // self.set((3,y), Some(Piece::Rook(self.current_player)));
-                        // self.set((0,y), None);
                         return true;
                     }
                 }
