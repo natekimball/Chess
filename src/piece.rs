@@ -101,7 +101,7 @@ impl Piece {
 
     pub(crate) fn can_block_path(&self, friendly: (u8, u8), enemy: (u8, u8), king: (u8, u8), game: &Game) -> Vec<(u8,u8)> {
         let mut spots = Vec::new();
-        if self.valid_move(friendly, enemy, game) == Move::Invalid {
+        if self.valid_move(friendly, enemy, game) == Move::Normal {
             spots.push(enemy);
         }
         if game.square_is_knight(enemy) {
@@ -112,19 +112,19 @@ impl Piece {
 
         if delta.0 == 0 {
             for i in min(king.1,enemy.1)..=max(king.1,enemy.1) {
-                if self.valid_move(friendly, (friendly.0, i), game) == Move::Invalid && i != friendly.1 && i != enemy.1 {
+                if self.valid_move(friendly, (friendly.0, i), game) != Move::Invalid && i != friendly.1 && i != enemy.1 {
                     spots.push((friendly.0, i));
                 }
             }
         } else if delta.1 == 0 {
             for i in min(king.0,enemy.0)..=max(king.0,enemy.0) {
-                if self.valid_move(friendly, (i, friendly.1), game) == Move::Invalid && i != friendly.0 && i != enemy.0 {
+                if self.valid_move(friendly, (i, friendly.1), game) != Move::Invalid && i != friendly.0 && i != enemy.0 {
                     spots.push((i, friendly.1));
                 }
             }
         } else {
             for i in 1..delta.0.abs() as u8 {
-                if self.valid_move(friendly, ((friendly.0 as i8 + signs.0 * i as i8) as u8, (friendly.1 as i8 + signs.1 * i as i8) as u8), game) == Move::Invalid {
+                if self.valid_move(friendly, ((friendly.0 as i8 + signs.0 * i as i8) as u8, (friendly.1 as i8 + signs.1 * i as i8) as u8), game) != Move::Invalid {
                     spots.push(((friendly.0 as i8 + signs.0 * i as i8) as u8, (friendly.1 as i8 + signs.1 * i as i8) as u8));
                 }
             }
