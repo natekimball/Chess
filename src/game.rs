@@ -25,6 +25,7 @@ impl Game {
         }
     }
 
+    #[cfg(test)]
     fn test_game(board: Vec<Vec<Option<Piece>>>, player: Player) -> Game {
         Game {
             board,
@@ -298,12 +299,9 @@ impl Game {
                                                     king = self.get_king(self.current_player);
                                                 }
                                                 let still_in_check = self.in_check(king);
-                                                println!("{self}");
-                                                println!("{still_in_check}");
                                                 self.set((l,k), Some(friendly));
                                                 self.set(square, old);
                                                 if !still_in_check {
-                                                    print!("friendly piece at ({},{}) can block enemy piece at ({},{}) and get us out of check", l,k,square.0, square.1);
                                                     return false;
                                                 }
                                             }
@@ -412,8 +410,6 @@ impl Game {
     }
 }
 
-// TODO: implement checkmate
-
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         writeln!(f, "{}", format!("\t      Player 1").red().bold())?;
@@ -512,7 +508,6 @@ mod tests {
         board[3][0] = Some(Piece::Queen(Player::Two));
         
         let mut game = Game::test_game(board, Player::One);
-        print!("{game}");
         assert!(game.checkmate());
     }
 }
