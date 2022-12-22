@@ -503,7 +503,8 @@ mod tests {
         let mut board = vec![vec![None;8];8];
         board[0][0] = Some(Piece::King(Player::One));
         board[0][1] = Some(Piece::Rook(Player::One));
-        board[2][0] = Some(Piece::Queen(Player::Two));
+        board[1][1] = Some(Piece::Pawn(Player::One));
+        board[3][0] = Some(Piece::Queen(Player::Two));
         
         let mut game = Game::test_game(board, Player::One);
         print!("{game}");
