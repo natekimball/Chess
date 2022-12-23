@@ -256,8 +256,8 @@ impl Game {
             println!("Invalid input! Try again.");
             return self.get_move();
         }
-        let from = (from.0.unwrap() as i8 - 'a' as i8, from.1.unwrap() as i8 - '1' as i8);
-        let to = (to.0.unwrap() as i8 - 'a' as i8, to.1.unwrap() as i8 - '1' as i8);
+        let from = (from.0.unwrap() as i8 - 'a' as i8, '8' as i8 - from.1.unwrap() as i8);
+        let to = (to.0.unwrap() as i8 - 'a' as i8, '8' as i8 - to.1.unwrap() as i8);
         if from.0 < 0 || from.1 < 0 || from.0 > 7 || from.1 > 7 || to.0 < 0 || to.1 < 0 || to.0 > 7 || to.1 > 7  {
             println!("Invalid input! Try again.");
             return self.get_move();
@@ -463,7 +463,7 @@ impl Display for Game {
         writeln!(f, "    a    b    c    d    e    f    g    h")?;
         self.board.iter().enumerate().for_each(|(i,row)| {
             writeln!(f, "  -----------------------------------------").unwrap();
-            write!(f, "{} ", i+1).unwrap();
+            write!(f, "{} ", 8-i).unwrap();
             row.iter().enumerate().for_each(|(j, piece)| {
                 match piece {
                     Some(piece) => write!(f, "|{}", if (i+j)%2==0 {format!(" {piece}  ").on_black()} else {format!(" {piece}  ").on_bright_black()}),
@@ -473,7 +473,7 @@ impl Display for Game {
                 }.unwrap();
             });
             write!(f, "|").unwrap();
-            writeln!(f, " {}", i+1).unwrap();
+            writeln!(f, " {}", 8-i).unwrap();
         });
         // writeln!(f, "  ---------------------------------")?;
         writeln!(f, "  -----------------------------------------")?;
