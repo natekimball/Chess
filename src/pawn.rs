@@ -14,8 +14,8 @@ impl Piece for Pawn {
     fn get_legal_moves(&self, position: (u8,u8), game: &Game) -> Vec<(u8,u8)> {
         let mut moves = Vec::new();
         let sign = match self.player {
-            Player::One => 1,
-            Player::Two => -1
+            Player::One => -1,
+            Player::Two => 1
         };
         let new_y = position.1 as i8 + sign;
         if new_y < 0 || new_y > 7 {
@@ -36,8 +36,8 @@ impl Piece for Pawn {
             moves.push(new_pos);
         }
         let end = match self.player {
-            Player::One => 6,
-            Player::Two => 1
+            Player::One => 1,
+            Player::Two => 6
         };
         for (x,y) in [(position.0 as i8 + 1, position.1 as i8 + sign), (position.0 as i8 - 1, position.1 as i8 + sign)] {
             if x < 0 || x > 7 || y < 0 || y > 7 {
@@ -60,12 +60,12 @@ impl Piece for Pawn {
     fn valid_move(&self, from: (u8,u8), to: (u8,u8), game: &Game) -> Move {
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         let sign = match self.player {
-            Player::One => 1,
-            Player::Two => -1
+            Player::One => -1,
+            Player::Two => 1
         };
         let end = match self.player {
-            Player::One => 5,
-            Player::Two => 2
+            Player::One => 2,
+            Player::Two => 5
         };
         let single = (x,y) == (0, sign*1) && game.square_is_none(to);
         let double = from.1==(end as i8-sign*4) as u8 && (x,y) == (0, sign*2) && game.check_horiz(from, (from.0, (from.1 as i8 + sign*3) as u8));

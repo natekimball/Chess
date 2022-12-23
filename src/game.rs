@@ -28,11 +28,11 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let mut board: Board = vec![vec![None; 8]; 8];
-        board[0] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Queen>(Player::One)), Some(<dyn Piece>::new_piece::<King>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Rook>(Player::One))];
-        board[1] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::One)); 8];
+        board[0] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Queen>(Player::Two)), Some(<dyn Piece>::new_piece::<King>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Rook>(Player::Two))];
+        board[1] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::Two)); 8];
         
-        board[7] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Queen>(Player::Two)), Some(<dyn Piece>::new_piece::<King>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Rook>(Player::Two))];
-        board[6] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::Two)); 8];
+        board[7] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Queen>(Player::One)), Some(<dyn Piece>::new_piece::<King>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Rook>(Player::One))];
+        board[6] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::One)); 8];
         Game {
             board,
             current_player: Player::One,
@@ -50,6 +50,11 @@ impl Game {
     #[cfg(test)]
     fn set_board(&mut self, board: Board) {
         self.board = board;
+    }
+
+    #[cfg(test)]
+    fn set_player(&mut self, player: Player) {
+        self.current_player = player;
     }
 
     pub fn turn(&mut self) {
@@ -459,7 +464,7 @@ impl Default for Game {
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        writeln!(f, "{}", format!("\t\tPlayer 1").red().bold())?;
+        writeln!(f, "{}", format!("\t\tPlayer 2").red().bold())?;
         writeln!(f, "    a    b    c    d    e    f    g    h")?;
         self.board.iter().enumerate().for_each(|(i,row)| {
             writeln!(f, "  -----------------------------------------").unwrap();
@@ -480,7 +485,7 @@ impl Display for Game {
         // writeln!(f, "    a   b   c   d   e   f   g   h")?;
         writeln!(f, "    a    b    c    d    e    f    g    h")?;
         // writeln!(f, "{}", format!("\t      Player 2").blue().bold())?;
-        writeln!(f, "{}", format!("\t\tPlayer 2").blue().bold())?;
+        writeln!(f, "{}", format!("\t\tPlayer 1").blue().bold())?;
         Ok(())
     }
 }
