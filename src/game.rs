@@ -50,6 +50,21 @@ impl Game {
         self.current_player = player;
     }
 
+    #[cfg(test)]
+    fn set_has_moved(&mut self, has_p1_king_moved: bool,
+        has_p1_left_rook_moved: bool,
+        has_p1_right_rook_moved: bool,
+        has_p2_king_moved: bool,
+        has_p2_left_rook_moved: bool,
+        has_p2_right_rook_moved: bool) {
+        self.has_p1_king_moved = has_p1_king_moved;
+        self.has_p1_left_rook_moved = has_p1_left_rook_moved;
+        self.has_p1_right_rook_moved = has_p1_right_rook_moved;
+        self.has_p2_king_moved = has_p2_king_moved;
+        self.has_p2_left_rook_moved = has_p2_left_rook_moved;
+        self.has_p2_right_rook_moved = has_p2_right_rook_moved;
+    }
+
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
@@ -497,64 +512,78 @@ impl Display for Game {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn checkmate_no_friendlies() {
-//         let mut board = vec![vec![None;8];8];
-//         board[0][0] = Some(Piece::King(Player::One));
-//         board[0][1] = Some(Piece::Queen(Player::Two));
-//         board[1][0] = Some(Piece::Queen(Player::Two));
+    #[test]
+    fn checkmate_no_friendlies() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        board[1][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
 
-//         let mut game = Game::test_game(board, Player::One);
-//         assert!(game.checkmate());
-//     }
+        let mut game = Game::new();
+        game.set_board(board);
 
-//     #[test]
-//     fn checkmate_no_friendlies2() {
-//         let mut board = vec![vec![None;8];8];
-//         board[0][0] = Some(Piece::King(Player::One));
-//         board[0][1] = Some(Piece::Queen(Player::Two));
-//         board[1][0] = Some(Piece::Rook(Player::Two));
-//         board[0][2] = Some(Piece::Queen(Player::Two));
+        assert!(game.checkmate());
+    }
 
-//         let mut game = Game::test_game(board, Player::One);
-//         assert!(game.checkmate());
-//     }
-
-//     #[test]
-//     fn no_checkmate_no_friendlies() {
-//         let mut board = vec![vec![None;8];8];
-//         board[0][0] = Some(Piece::King(Player::One));
-//         board[0][1] = Some(Piece::Rook(Player::Two));
-//         board[1][0] = Some(Piece::Rook(Player::Two));
-
-//         let mut game = Game::test_game(board, Player::One);
-//         assert!(!game.checkmate());
-//     }
-
-//     #[test]
-//     fn no_checkmate_blockable() {
-//         let mut board = vec![vec![None;8];8];
-//         board[0][0] = Some(Piece::King(Player::One));
-//         board[0][1] = Some(Piece::Knight(Player::One));
-//         board[2][0] = Some(Piece::Queen(Player::Two));
-
-//         let mut game = Game::test_game(board, Player::One);
-//         assert!(!game.checkmate());
-//     }
-
-//     #[test]
-//     fn checkmate_unblockable() {
-//         let mut board = vec![vec![None;8];8];
-//         board[0][0] = Some(Piece::King(Player::One));
-//         board[0][1] = Some(Piece::Rook(Player::One));
-//         board[1][1] = Some(Piece::Pawn(Player::One));
-//         board[3][0] = Some(Piece::Queen(Player::Two));
+    #[test]
+    fn checkmate_no_friendlies2() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][2] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
         
-//         let mut game = Game::test_game(board, Player::One);
-//         assert!(game.checkmate());
-//     }
-// }
+        let mut game = Game::new();
+        game.set_board(board);
+
+        assert!(game.checkmate());
+    }
+
+    #[test]
+    fn no_checkmate_no_friendlies() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+
+        let mut game = Game::new();
+        game.set_board(board);
+
+        print!("{game}");
+        
+        assert!(!game.checkmate());
+    }
+
+    #[test]
+    fn no_checkmate_blockable() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Knight>(Player::One));
+        board[2][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        let mut game = Game::new();
+        game.set_board(board);
+
+        print!("{game}");
+
+        assert!(!game.checkmate());
+    }
+
+    #[test]
+    fn checkmate_unblockable() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[1][1] = Some(<dyn Piece>::new_piece::<Pawn>(Player::One));
+        board[3][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+
+        
+        let mut game = Game::new();
+        game.set_board(board);
+
+        assert!(game.checkmate());
+    }
+}
