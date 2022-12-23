@@ -8,9 +8,8 @@ use crate::{game::Game, rook::Rook, piece::{Construct, Move, Piece, DynClone}, p
 pub struct King {
     player: Player,
     //set has_moved to false after moved
-    pub has_moved: bool
+    has_moved: bool
 }
-
 
 impl Piece for King {
     fn get_legal_moves(&self, position: (u8,u8), game: &Game) -> Vec<(u8, u8)> {
