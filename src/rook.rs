@@ -6,8 +6,7 @@ use crate::{game::Game, piece::{Construct, Move, Piece, DynClone}, player::Playe
 
 #[derive(Clone, Debug)]
 pub struct Rook {
-    player: Player,
-    pub has_moved: bool
+    player: Player
 }
 
 
@@ -58,8 +57,7 @@ impl Piece for Rook {
 impl Construct for Rook {
     fn new(player: Player) -> Self {
         Self {
-            player,
-            has_moved: false
+            player
         }
     }
 }

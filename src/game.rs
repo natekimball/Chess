@@ -17,12 +17,12 @@ pub struct Game {
     current_player: Player,
     game_over: bool,
     last_double: Option<(u8, u8)>,
-    has_p1_king_moved: bool,
-    has_p1_left_rook_moved: bool,
-    has_p1_right_rook_moved: bool,
-    has_p2_king_moved: bool,
-    has_p2_left_rook_moved: bool,
-    has_p2_right_rook_moved: bool
+    pub(crate) has_p1_king_moved: bool,
+    pub(crate) has_p1_left_rook_moved: bool,
+    pub(crate) has_p1_right_rook_moved: bool,
+    pub(crate) has_p2_king_moved: bool,
+    pub(crate) has_p2_left_rook_moved: bool,
+    pub(crate) has_p2_right_rook_moved: bool
 }
 
 impl Game {
@@ -365,6 +365,7 @@ impl Game {
         self.set(position, Some(piece));
     }
 
+    #[allow(dead_code)]
     pub(crate) fn can_castle(&self, from: (u8, u8), to: (u8, u8)) -> bool {
         if self.in_check(from) {
             return false;
@@ -416,14 +417,6 @@ impl Game {
         self.get(to).is_none()
     }
 
-    pub(crate) fn square_is_knight(&self, to: (u8, u8)) -> bool {
-        if let Some(piece) = self.get(to) {
-            piece.is_type::<Knight>()
-        } else {
-            false
-        }
-    }
-
     pub(crate) fn is_not_ally(&self, new_pos: (u8, u8)) -> bool {
         !self.is_current_player(new_pos)
     }
@@ -452,6 +445,13 @@ impl Game {
                     }
                 }
             }
+        }
+    }
+
+    pub(crate) fn has_king_moved(&self, player: Player) -> bool {
+        match player {
+            Player::One => self.has_p1_king_moved,
+            Player::Two => self.has_p2_king_moved,
         }
     }
 }
