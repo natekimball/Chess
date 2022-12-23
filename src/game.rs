@@ -1,13 +1,6 @@
 use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
 use colored::Colorize;
-use crate::piece::{Piece, Move};
-use crate::king::King;
-use crate::queen::Queen;
-use crate::rook::Rook;
-use crate::bishop::Bishop;
-use crate::knight::Knight;
-use crate::pawn::Pawn;
-use crate::player::Player;
+use crate::{piece::{Piece, Move}, king::King, queen::Queen, rook::Rook, bishop::Bishop, knight::Knight, pawn::Pawn, player::Player};
 
 type Square = Option<Box<dyn Piece>>;
 type Board = Vec<Vec<Square>>;
@@ -17,12 +10,12 @@ pub struct Game {
     current_player: Player,
     game_over: bool,
     last_double: Option<(u8, u8)>,
-    pub(crate) has_p1_king_moved: bool,
-    pub(crate) has_p1_left_rook_moved: bool,
-    pub(crate) has_p1_right_rook_moved: bool,
-    pub(crate) has_p2_king_moved: bool,
-    pub(crate) has_p2_left_rook_moved: bool,
-    pub(crate) has_p2_right_rook_moved: bool
+    has_p1_king_moved: bool,
+    has_p1_left_rook_moved: bool,
+    has_p1_right_rook_moved: bool,
+    has_p2_king_moved: bool,
+    has_p2_left_rook_moved: bool,
+    has_p2_right_rook_moved: bool
 }
 
 impl Game {
@@ -452,6 +445,20 @@ impl Game {
         match player {
             Player::One => self.has_p1_king_moved,
             Player::Two => self.has_p2_king_moved,
+        }
+    }
+
+    pub(crate) fn has_left_rook_moved(&self, player: Player) -> bool {
+        match player {
+            Player::One => self.has_p1_left_rook_moved,
+            Player::Two => self.has_p2_left_rook_moved,
+        }
+    }
+
+    pub(crate) fn has_right_rook_moved(&self, player: Player) -> bool {
+        match player {
+            Player::One => self.has_p1_right_rook_moved,
+            Player::Two => self.has_p2_right_rook_moved,
         }
     }
 }
