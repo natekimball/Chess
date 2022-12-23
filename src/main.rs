@@ -1,5 +1,12 @@
 mod game;
 mod piece;
+mod king;
+mod queen;
+mod rook;
+mod bishop;
+mod knight;
+mod pawn;
+mod player;
 use game::Game;
 
 fn main() {
