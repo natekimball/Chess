@@ -6,9 +6,7 @@ use crate::{game::Game, rook::Rook, piece::{Construct, Move, Piece, DynClone}, p
 
 #[derive(Clone, Debug)]
 pub struct King {
-    player: Player,
-    //set has_moved to false after moved
-    has_moved: bool
+    player: Player
 }
 
 impl Piece for King {
@@ -24,8 +22,15 @@ impl Piece for King {
                 // check for in_check here?
                 moves.push(new_pos);
             }
-        }    
-        if self.has_moved || game.in_check(position) {
+        }
+        // let has_moved = if position == (4,7) && self.player == Player::One {
+        //     game.has_p1_king_moved
+        // } else if position == (4,0) && self.player == Player::Two {
+        //     game.has_p2_king_moved
+        // } else {
+        //     true
+        // };
+        if game.has_king_moved(self.player) || game.in_check(position) {
             return moves;
         }
         if self.can_castle_left(position, game) {
@@ -42,8 +47,10 @@ impl Piece for King {
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         if x.abs() < 2 && y.abs() < 2 {
             Move::Normal
-        } else if game.can_castle(from, to) {
-            // use new function to check if castling is valid?
+        // } else if game.can_castle(from, to) {
+        } else if to.0 == 2 && to.1 == from.1 && self.can_castle_left(from, game) {
+            Move::Castle
+        } else if to.0 == 6 && to.1 == from.1 && self.can_castle_right(from, game) {
             Move::Castle
         } else {
             Move::Invalid
@@ -69,26 +76,26 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        if self.has_moved || position != (4,y) || game.in_check((4,y)) {
+        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
             return false;
         }
         if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
             if let Some(rook) = game.get((0,y)) {
-                // if matches!(rook, Rook) {
-                // if rook.is_type::<Rook>() {
-                //     let rook = rook.get_piece::<Rook>().unwrap();
-                if let Some(rook) = rook.get_piece::<Rook>() {
-                    if !rook.has_moved {
-                        return true;
+                if rook.is_type::<Rook>() {
+                    match self.player {
+                        Player::One => {
+                            if !game.has_p1_left_rook_moved {
+                                return true;
+                            }
+                        },
+                        Player::Two => {
+                            if !game.has_p2_left_rook_moved {
+                                return true;
+                            }
+                        }
                     }
                 }
             }
-            // if rook.is_some() && matches!(rook.unwrap(), Rook) {
-            //     let rook = rook.unwrap().as_any().downcast_ref::<Rook>().unwrap();
-            //     if !rook.has_moved {
-            //         return true;
-            //     }
-            // }
         }
         false
     }
@@ -98,17 +105,23 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        if self.has_moved || position != (4,y) || game.in_check((4,y)) {
+        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
             return false;
         }
         if game.square_is_none((5,y)) && game.square_is_none((6,y)) {
             if let Some(rook) = game.get((7,y)) {
-                // if matches!(rook, Rook) {
-                // // if rook.is_type::<Rook>() {
-                //     let rook = rook.get_piece::<Rook>().unwrap();
-                if let Some(rook) = rook.get_piece::<Rook>() {
-                    if !rook.has_moved {
-                        return true;
+                if rook.is_type::<Rook>() {
+                    match self.player {
+                        Player::One => {
+                            if !game.has_p1_right_rook_moved {
+                                return true;
+                            }
+                        },
+                        Player::Two => {
+                            if !game.has_p2_right_rook_moved {
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -120,8 +133,7 @@ impl King {
 impl Construct for King {
     fn new(player: Player) -> Self {
         Self {
-            player,
-            has_moved: false
+            player
         }
     }
 }
