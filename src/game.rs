@@ -1,4 +1,4 @@
-use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}, any::Any};
+use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
 use colored::Colorize;
 use crate::piece::{Piece, Move};
 use crate::king::King;
@@ -16,7 +16,13 @@ pub struct Game {
     board: Vec<Vec<Square>>,
     current_player: Player,
     game_over: bool,
-    last_double: Option<(u8, u8)>
+    last_double: Option<(u8, u8)>,
+    has_p1_king_moved: bool,
+    has_p1_left_rook_moved: bool,
+    has_p1_right_rook_moved: bool,
+    has_p2_king_moved: bool,
+    has_p2_left_rook_moved: bool,
+    has_p2_right_rook_moved: bool
 }
 
 impl Game {
@@ -31,18 +37,19 @@ impl Game {
             board,
             current_player: Player::One,
             game_over: false,
-            last_double: None
+            last_double: None,
+            has_p1_king_moved: false,
+            has_p1_left_rook_moved: false,
+            has_p1_right_rook_moved: false,
+            has_p2_king_moved: false,
+            has_p2_left_rook_moved: false,
+            has_p2_right_rook_moved: false,
         }
     }
 
     #[cfg(test)]
-    fn test_game(board: Board, player: Player) -> Game {
-        Game {
-            board,
-            current_player: player,
-            game_over: false,
-            last_double: None
-        }
+    fn set_board(&mut self, board: Board) {
+        self.board = board;
     }
 
     pub fn turn(&mut self) {
@@ -96,7 +103,7 @@ impl Game {
                         },
                         Move::Invalid => unreachable!()
                     }
-                    
+                    self.set_moved(piece.clone(), from);
                 }
                 if (to.1 == 7 || to.1 == 0) && piece.unwrap().is_type::<Pawn>() {
                     self.promote_piece(to);
@@ -414,6 +421,33 @@ impl Game {
 
     pub(crate) fn is_not_ally(&self, new_pos: (u8, u8)) -> bool {
         !self.is_current_player(new_pos)
+    }
+
+    fn set_moved(&mut self, piece: Square, from: (u8, u8)) {
+        let piece = piece.unwrap();
+        if piece.is_type::<King>() {
+            match piece.player() {
+                Player::One => self.has_p1_king_moved = true,
+                Player::Two => self.has_p2_king_moved = true,
+            }
+        } else if piece.is_type::<Rook>() {
+            match piece.player() {
+                Player::One => {
+                    if from == (0,0) {
+                        self.has_p1_left_rook_moved = true;
+                    } else if from == (7,0) {
+                        self.has_p1_right_rook_moved = true;
+                    }
+                },
+                Player::Two => {
+                    if from == (0,7) {
+                        self.has_p2_left_rook_moved = true;
+                    } else if from == (7,7) {
+                        self.has_p2_right_rook_moved = true;
+                    }
+                }
+            }
+        }
     }
 }
 
