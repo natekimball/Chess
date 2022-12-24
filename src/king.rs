@@ -76,15 +76,15 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        dbg!(position, (4,y), game.in_check((4,y)));
+        // dbg!(position, (4,y), game.in_check((4,y)));
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
             return false;
         }
-        dbg!("one");
+        // dbg!("one");
         if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
-            dbg!("two");
+            // dbg!("two");
             if let Some(rook) = game.get((0,y)) {
-                dbg!("three");
+                // dbg!("three");
                 if rook.is_type::<Rook>() {
                     if !game.has_left_rook_moved(self.player) {
                         return true;
@@ -100,13 +100,13 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        dbg!(position, (4,y), game.in_check((4,y)));
+        // dbg!(position, (4,y), game.in_check((4,y)));
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
             return false;
         }
-        dbg!("one");
+        // dbg!("one");
         if game.square_is_none((5,y)) && game.square_is_none((6,y)) {
-            dbg!("two");
+            // dbg!("two");
             if let Some(rook) = game.get((7,y)) {
                 if rook.is_type::<Rook>() {
                     if !game.has_right_rook_moved(self.player) {

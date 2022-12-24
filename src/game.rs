@@ -267,7 +267,12 @@ impl Game {
                 println!("Invalid input! Try again.");
                 return self.get_move();
             }
-            let from = ((from.0.unwrap() as i8 - 'a' as i8) as u8, ('8' as i8 - from.1.unwrap() as i8) as u8);
+            let from = (from.0.unwrap() as i8 - 'a' as i8, '8' as i8 - from.1.unwrap() as i8);
+            if from.0 < 0 || from.0 > 7 || from.1 < 0 || from.1 > 7 {
+                println!("Invalid input! Try again.");
+                return self.get_move();
+            }
+            let from = (from.0 as u8, from.1 as u8);
             self.see_all_moves(from);
             println!("Enter your move (e.g. a2 a4):");
             return self.get_move();
@@ -490,8 +495,13 @@ impl Game {
 
     fn see_all_moves(&self, from: (u8, u8)) {
         if let Some(piece) = self.get(from) {
+            let moves = piece.get_legal_moves(from, self);
+            if moves.len() == 0 {
+                println!("{}'s {} has no legal moves!", piece.player(), piece.name());
+                return;
+            }
             println!("{}'s {} can move to:", piece.player(), piece.name());
-            let moves = piece.get_legal_moves(from, self).iter().map(
+            let moves = moves.iter().map(
                 |(x,y)| {
                     format!("{}{}", (x + 'a' as u8) as char, 8-y)
                 }

@@ -22,6 +22,6 @@ fn launch_game() -> bool {
     while !game.is_over() {
         game.turn();
     }
-
+    
     game.play_again()
 }
