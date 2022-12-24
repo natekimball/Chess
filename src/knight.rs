@@ -19,7 +19,7 @@ impl Piece for Knight {
                 continue;
             }
             let new_pos = (new_pos.0 as u8, new_pos.1 as u8);
-            if game.is_not_ally(new_pos) {
+            if game.is_not_player(new_pos, self.player) {
                 moves.push(new_pos);
             }
         }

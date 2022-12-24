@@ -20,19 +20,12 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Game {
-        // let mut board: Board = vec![vec![None; 8]; 8];
-        // board[0] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Queen>(Player::Two)), Some(<dyn Piece>::new_piece::<King>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Rook>(Player::Two))];
-        // board[1] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::Two)); 8];
+        let mut board: Board = vec![vec![None; 8]; 8];
+        board[0] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Queen>(Player::Two)), Some(<dyn Piece>::new_piece::<King>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Rook>(Player::Two))];
+        board[1] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::Two)); 8];
         
-        // board[7] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Queen>(Player::One)), Some(<dyn Piece>::new_piece::<King>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Rook>(Player::One))];
-        // board[6] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::One)); 8];
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[7] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Queen>(Player::One)), Some(<dyn Piece>::new_piece::<King>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Rook>(Player::One))];
+        board[6] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::One)); 8];
         Game {
             board,
             current_player: Player::One,
@@ -50,11 +43,6 @@ impl Game {
     #[cfg(test)]
     pub(crate) fn set_board(&mut self, board: Board) {
         self.board = board;
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_player(&mut self, player: Player) {
-        self.current_player = player;
     }
 
     pub fn turn(&mut self) {
@@ -433,8 +421,12 @@ impl Game {
         self.get(to).is_none()
     }
 
-    pub(crate) fn is_not_ally(&self, new_pos: (u8, u8)) -> bool {
-        !self.is_current_player(new_pos)
+    pub(crate) fn is_not_player(&self, new_pos: (u8, u8), player: Player) -> bool {
+        if let Some(piece) = self.get(new_pos) {
+            piece.player() != player
+        } else {
+            true
+        }
     }
 
     fn set_moved(&mut self, piece: Square, from: (u8, u8)) {
@@ -501,6 +493,14 @@ impl Game {
             println!("{moves}");
         } else {
             println!("There's no piece there!");
+        }
+    }
+
+    pub(crate) fn is_player(&self, new_pos: (u8, u8), player: Player) -> bool {
+        if let Some(piece) = self.get(new_pos) {
+            piece.player() == player
+        } else {
+            false
         }
     }
 }

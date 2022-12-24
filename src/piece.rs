@@ -1,12 +1,11 @@
 use std::{
-    any::TypeId,
+    any::{Any, TypeId},
     fmt::{Display},
 };
 
 // use colored::{Colorize};
 use crate::game::Game;
 use crate::player::Player;
-use std::any::Any;
 
 //should I wrap legal moves in a enum?
 

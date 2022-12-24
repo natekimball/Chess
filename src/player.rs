@@ -13,6 +13,13 @@ impl Player {
             Player::Two => 2,
         }
     }
+
+    pub(crate) fn other(&self) -> Player {
+        match self {
+            Player::One => Player::Two,
+            Player::Two => Player::One,
+        }
+    }
 }
 
 impl Display for Player {

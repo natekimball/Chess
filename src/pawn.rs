@@ -40,7 +40,7 @@ impl Piece for Pawn {
                 continue;
             }
             let new_pos = (x as u8, y as u8);
-            if game.square_is_opponent(new_pos) {
+            if game.is_player(new_pos, self.player.other()) {
                 moves.push(new_pos);
             } else if y == end - sign {
                 if let Some(last_double) = game.get_last_double() {
