@@ -10,7 +10,7 @@ pub struct Queen {
 }
 
 impl Piece for Queen {
-    fn get_legal_moves(&self, position: (u8,u8), game: &Game) -> Vec<(u8,u8)> {
+    fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8,u8)> {
         let mut moves = Vec::new();
         for (x_sign, y_sign) in [(1,0), (1,1), (0,1), (-1,1), (-1,0), (-1,-1), (0,-1), (1,-1)] {
             let mut x = position.0 as i8;

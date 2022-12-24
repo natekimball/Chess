@@ -11,7 +11,7 @@ pub struct Knight {
 
 
 impl Piece for Knight {
-    fn get_legal_moves(&self, position: (u8,u8), game: &Game) -> Vec<(u8,u8)> {
+    fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8,u8)> {
         let mut moves = Vec::new();
         for (x_sign, y_sign) in [(1,2), (2,1), (-1,2), (-2,1), (1,-2), (2,-1), (-1,-2), (-2,-1)] {
             let new_pos = (position.0 as i8 + x_sign, position.1 as i8 + y_sign);

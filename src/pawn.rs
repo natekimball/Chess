@@ -11,7 +11,7 @@ pub struct Pawn {
 
 
 impl Piece for Pawn {
-    fn get_legal_moves(&self, position: (u8,u8), game: &Game) -> Vec<(u8,u8)> {
+    fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8,u8)> {
         let mut moves = Vec::new();
         let sign = match self.player {
             Player::One => -1,
