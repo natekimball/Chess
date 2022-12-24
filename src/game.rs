@@ -296,7 +296,7 @@ impl Game {
         (from, to)
     }
 
-    fn is_square_king(&self, square: (u8, u8)) -> bool {
+    fn square_is_king(&self, square: (u8, u8)) -> bool {
         if let Some(piece) = self.get(square) {
             piece.is_type::<King>()
         } else {
@@ -330,11 +330,12 @@ impl Game {
                                     if let Some(friendly) = self.get((l,k)) {
                                         if friendly.player() == self.current_player {
                                             //for every friendly piece, see if it can block the path and get us out of check
+                                            // print!("{:?}", friendly.can_intercept_path((l,k), (j,i), king, self));
                                             for square in friendly.can_intercept_path((l,k), (j,i), king, self) {
                                                 let old = self.get(square);
                                                 self.set(square, Some(friendly.clone()));
                                                 self.set((l,k), None);
-                                                if !self.is_square_king(king) {
+                                                if !self.square_is_king(king) {
                                                     king = self.get_king(self.current_player);
                                                 }
                                                 let still_in_check = self.in_check(king);
@@ -353,7 +354,8 @@ impl Game {
                 }
             }
         }
-
+        // something wrong ^
+        dbg!("no one can intercept path");
         let (x,y) = king;
         for (i, j) in [(0,1), (1,0), (0,-1), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)] {
             let (new_x, new_y) = (x as i8 + i, y as i8 + j);
