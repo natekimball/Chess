@@ -135,3 +135,34 @@ impl Display for King {
         write!(f, "{}", c)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn simple_castle1() {
+        let mut board = vec![vec![None;8];8];
+        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+
+        let mut game = Game::new();
+        game.set_board(board);
+
+        print!("{game}");
+
+        let king1 = game.get((4,0)).unwrap();
+        let king1 = king1.get_piece::<King>().unwrap();
+        let king2 = game.get((4,7)).unwrap();
+        let king2 = king2.get_piece::<King>().unwrap();
+
+        assert!(king1.can_castle_left((4,0), &game));
+        assert!(king1.can_castle_right((4,0), &game));
+        assert!(king2.can_castle_left((4,7), &game));
+        assert!(king2.can_castle_right((4,7), &game));
+
+    }
+}
