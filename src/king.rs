@@ -30,7 +30,7 @@ impl Piece for King {
         // } else {
         //     true
         // };
-        if game.has_king_moved(self.player) || game.in_check(position) {
+        if game.has_king_moved(self.player) || game.in_check(position, self.player) {
             return moves;
         }
         if self.can_castle_left(position, game) {
@@ -40,6 +40,7 @@ impl Piece for King {
             moves.push((6,position.1));
         }
         moves
+        //TODO: fix
     }
 
     //doesn't  handle friendly fire or moving into check
@@ -76,15 +77,11 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        dbg!(position, (4,y), game.in_check((4,y)));
-        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
+        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y), self.player) {
             return false;
         }
-        dbg!("one");
         if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
-            // dbg!("two");
             if let Some(rook) = game.get((0,y)) {
-                // dbg!("three");
                 if rook.is_type::<Rook>() {
                     if !game.has_left_rook_moved(self.player) {
                         return true;
@@ -100,13 +97,10 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        // dbg!(position, (4,y), game.in_check((4,y)));
-        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
+        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y), self.player) {
             return false;
         }
-        // dbg!("one");
         if game.square_is_none((5,y)) && game.square_is_none((6,y)) {
-            // dbg!("two");
             if let Some(rook) = game.get((7,y)) {
                 if rook.is_type::<Rook>() {
                     if !game.has_right_rook_moved(self.player) {
