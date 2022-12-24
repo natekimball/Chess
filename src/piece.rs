@@ -22,7 +22,6 @@ pub trait Piece: Display + DynClone {
         game: &Game,
     ) -> Vec<(u8, u8)> {
         let moves = self.get_legal_moves(position, game);
-        dbg!(&moves);
         let mut intercepts = Vec::new();
         let (x, y) = (king.0 as i8 - enemy.0 as i8, king.1 as i8 - enemy.1 as i8);
         let (x_sign, y_sign) = (x.signum(), y.signum());

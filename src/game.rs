@@ -46,7 +46,7 @@ impl Game {
     }
 
     #[cfg(test)]
-    fn set_player(&mut self, player: Player) {
+    pub(crate) fn set_player(&mut self, player: Player) {
         self.current_player = player;
     }
 
@@ -225,6 +225,7 @@ impl Game {
                 if let Some(piece) = self.get((j,i)) {
                     if piece.player() != self.current_player {
                         if piece.valid_move((j as u8,i as u8), king, self) != Move::Invalid {
+                            dbg!(piece.name(), piece.player(), (j as u8,i as u8));
                             return true;
                         }
                     }
@@ -576,6 +577,8 @@ mod tests {
         
         let mut game = Game::new();
         game.set_board(board);
+
+        print!("{game}");
 
         assert!(game.checkmate());
     }
