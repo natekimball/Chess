@@ -6,6 +6,15 @@ pub enum Player {
     Two
 }
 
+impl Player {
+    pub fn number(&self) -> u8 {
+        match self {
+            Player::One => 1,
+            Player::Two => 2,
+        }
+    }
+}
+
 impl Display for Player {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self {
