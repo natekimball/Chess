@@ -17,6 +17,10 @@ impl Piece for Pawn {
             Player::One => -1,
             Player::Two => 1
         };
+        let end: i8 = match self.player {
+            Player::One => 1,
+            Player::Two => 6
+        };
         let new_y = position.1 as i8 + sign;
         if new_y < 0 || new_y > 7 {
             return moves;
@@ -24,21 +28,13 @@ impl Piece for Pawn {
         let new_pos = (position.0, new_y as u8);
         if game.square_is_none(new_pos) {
             moves.push(new_pos);
-            if (position.1 == 1 && self.player == Player::One) || (position.1 == 6 && self.player == Player::Two) {
-                let new_pos = (position.0, (new_y + sign) as u8);
+            if position.1 == (end - 5*sign) as u8 {
+                let new_pos = (new_pos.0, (new_y + sign) as u8);
                 if game.square_is_none(new_pos) {
                     moves.push(new_pos);
                 }
             }
         }
-        // let new_pos = (new_pos.0 as u8, new_pos.1 as u8);
-        if game.square_is_none(new_pos) {
-            moves.push(new_pos);
-        }
-        let end = match self.player {
-            Player::One => 1,
-            Player::Two => 6
-        };
         for (x,y) in [(position.0 as i8 + 1, position.1 as i8 + sign), (position.0 as i8 - 1, position.1 as i8 + sign)] {
             if x < 0 || x > 7 || y < 0 || y > 7 {
                 continue;

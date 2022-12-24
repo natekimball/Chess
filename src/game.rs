@@ -71,7 +71,7 @@ impl Game {
         if self.player_in_check() {
             println!("You're in check!");
         }
-        println!("Enter your move: (e.g. a2 a4)");
+        println!("Enter your move (e.g. a2 a4) or enter a position to see its possible moves (e.g. a2):");
 
         let mut valid_move = false;
         while !valid_move {
@@ -257,8 +257,19 @@ impl Game {
         let mut input = input.split_whitespace();
         let from = input.next();
         let to = input.next();
-        if from.is_none() || to.is_none() {
+        if from.is_none() {
             println!("Invalid input! Try again.");
+            return self.get_move();
+        } else if to.is_none() {
+            let from = from.unwrap().to_ascii_lowercase();
+            let from = (from.chars().nth(0), from.chars().nth(1));
+            if from.0.is_none() || from.1.is_none() {
+                println!("Invalid input! Try again.");
+                return self.get_move();
+            }
+            let from = ((from.0.unwrap() as i8 - 'a' as i8) as u8, ('8' as i8 - from.1.unwrap() as i8) as u8);
+            self.see_all_moves(from);
+            println!("Enter your move (e.g. a2 a4):");
             return self.get_move();
         }
         let from = from.unwrap().to_ascii_lowercase();
@@ -474,6 +485,20 @@ impl Game {
         match player {
             Player::One => self.has_p1_right_rook_moved,
             Player::Two => self.has_p2_right_rook_moved,
+        }
+    }
+
+    fn see_all_moves(&self, from: (u8, u8)) {
+        if let Some(piece) = self.get(from) {
+            println!("{}'s {} can move to:", piece.player(), piece.name());
+            let moves = piece.get_legal_moves(from, self).iter().map(
+                |(x,y)| {
+                    format!("{}{}", (x + 'a' as u8) as char, 8-y)
+                }
+            ).collect::<Vec<String>>().join(",");
+            println!("{moves}");
+        } else {
+            println!("There's no piece there!");
         }
     }
 }
