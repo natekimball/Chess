@@ -23,7 +23,7 @@ impl Piece for Rook {
                     break;
                 }
                 let new_pos = (x as u8, y as u8);
-                if game.square_is_opponent(new_pos) {
+                if game.is_player(new_pos, self.player.other()) {
                     moves.push(new_pos);
                 }
                 if game.square_is_none(new_pos) {

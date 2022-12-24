@@ -18,8 +18,7 @@ impl Piece for King {
                 continue;
             }
             let new_pos = (new_pos.0 as u8, new_pos.1 as u8);
-            if game.is_not_ally(new_pos) {
-                // check for in_check here?
+            if game.is_not_player(new_pos, self.player) && !game.in_check(new_pos, self.player) {
                 moves.push(new_pos);
             }
         }
@@ -40,7 +39,6 @@ impl Piece for King {
             moves.push((6,position.1));
         }
         moves
-        //TODO: fix
     }
 
     //doesn't  handle friendly fire or moving into check
@@ -162,8 +160,6 @@ mod tests {
 
         assert!(king1.can_castle_left((4,0), &game));
         assert!(king1.can_castle_right((4,0), &game));
-
-        game.set_player(Player::Two);
         assert!(king2.can_castle_left((4,7), &game));
         assert!(king2.can_castle_right((4,7), &game));
     }
