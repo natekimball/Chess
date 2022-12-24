@@ -47,6 +47,10 @@ pub trait DynClone {
     fn clone_box(&self) -> Box<dyn Piece>;
 }
 
+pub trait Construct {
+    fn new(player: Player) -> Self;
+}
+
 impl Clone for Box<dyn Piece> {
     fn clone(&self) -> Self {
         self.clone_box()
@@ -69,10 +73,6 @@ impl dyn Piece {
     pub fn display<T: Piece + Display + 'static>(piece: &T) -> String {
         format!("{piece}")
     }
-}
-
-pub trait Construct {
-    fn new(player: Player) -> Self;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
