@@ -41,7 +41,7 @@ impl Game {
     }
 
     #[cfg(test)]
-    fn set_board(&mut self, board: Board) {
+    pub(crate) fn set_board(&mut self, board: Board) {
         self.board = board;
     }
 
