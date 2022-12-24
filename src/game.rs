@@ -48,8 +48,10 @@ impl Game {
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
+        let mut in_check = false;
         if self.player_in_check() {
             println!("You're in check!");
+            in_check = true;
         }
         println!("Enter your move (e.g. a2 a4) or enter a position to see its possible moves (e.g. a2):");
 
@@ -77,7 +79,11 @@ impl Game {
                     self.set(from, None);
                 }
                 if self.player_in_check() {
-                    println!("Wait you can't put yourself in check! go again.");
+                    if in_check {
+                        println!("Invalid move while you are in check! go again");
+                    } else {
+                        println!("Wait you can't put yourself in check! go again.");
+                    }
                     self.set(from, self.get(to));
                     self.set(to, conquered);
                     continue;
@@ -231,7 +237,7 @@ impl Game {
         self.in_check(self.get_king(self.current_player), self.current_player)
     }
 
-    fn get_move(&self) -> ((u8, u8), (u8, u8)) {
+    fn get_move(&mut self) -> ((u8, u8), (u8, u8)) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         let mut input = input.split_whitespace();
@@ -477,7 +483,7 @@ impl Game {
         }
     }
 
-    fn see_all_moves(&self, from: (u8, u8)) {
+    fn see_all_moves(&mut self, from: (u8, u8)) {
         if let Some(piece) = self.get(from) {
             let moves = piece.get_legal_moves(from, self);
             if moves.len() == 0 {
@@ -502,6 +508,16 @@ impl Game {
         } else {
             false
         }
+    }
+
+    pub(crate) fn try_position_for_check(&mut self, from: (u8, u8), to: (u8, u8), player: Player) -> bool {
+        let old = self.get(to);
+        self.set(to, self.get(from));
+        self.set(from, None);
+        let in_check = self.in_check(to, player);
+        self.set(from, self.get(to));
+        self.set(to, old);
+        in_check
     }
 }
 

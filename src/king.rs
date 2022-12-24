@@ -10,7 +10,7 @@ pub struct King {
 }
 
 impl Piece for King {
-    fn get_legal_moves(&self, position: (u8,u8), game: &Game) -> Vec<(u8, u8)> {
+    fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8, u8)> {
         let mut moves = Vec::new();
         for (x,y) in [(0,1), (1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1)]{
             let new_pos = (position.0 as i8 + x, position.1 as i8 + y);
@@ -18,17 +18,12 @@ impl Piece for King {
                 continue;
             }
             let new_pos = (new_pos.0 as u8, new_pos.1 as u8);
-            if game.is_not_player(new_pos, self.player) && !game.in_check(new_pos, self.player) {
-                moves.push(new_pos);
+            if game.is_not_player(new_pos, self.player) {
+                if !game.try_position_for_check(position, new_pos, self.player) {
+                    moves.push(new_pos);
+                }
             }
         }
-        // let has_moved = if position == (4,7) && self.player == Player::One {
-        //     game.has_p1_king_moved
-        // } else if position == (4,0) && self.player == Player::Two {
-        //     game.has_p2_king_moved
-        // } else {
-        //     true
-        // };
         if game.has_king_moved(self.player) || game.in_check(position, self.player) {
             return moves;
         }
