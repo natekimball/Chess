@@ -76,11 +76,11 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        // dbg!(position, (4,y), game.in_check((4,y)));
+        dbg!(position, (4,y), game.in_check((4,y)));
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y)) {
             return false;
         }
-        // dbg!("one");
+        dbg!("one");
         if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
             // dbg!("two");
             if let Some(rook) = game.get((0,y)) {
@@ -168,6 +168,8 @@ mod tests {
 
         assert!(king1.can_castle_left((4,0), &game));
         assert!(king1.can_castle_right((4,0), &game));
+
+        game.set_player(Player::Two);
         assert!(king2.can_castle_left((4,7), &game));
         assert!(king2.can_castle_right((4,7), &game));
     }
