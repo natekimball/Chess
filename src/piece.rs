@@ -22,20 +22,23 @@ pub trait Piece: Display + DynClone {
         game: &Game,
     ) -> Vec<(u8, u8)> {
         let moves = self.get_legal_moves(position, game);
+        dbg!(&moves);
         let mut intercepts = Vec::new();
         let (x, y) = (king.0 as i8 - enemy.0 as i8, king.1 as i8 - enemy.1 as i8);
         let (x_sign, y_sign) = (x.signum(), y.signum());
         if x != 0 && y != 0 && x.abs() != y.abs() {
             return intercepts;
         }
-        // let (x, y) = (x.abs() as u8, y.abs() as u8);
         let (mut j, mut i) = enemy;
+        if moves.contains(&(j, i)) {
+            intercepts.push((j, i));
+        }
         while j != king.0 && i != king.1 {
+            j = (j as i8 + x_sign) as u8;
+            i = (i as i8 + y_sign) as u8;
             if moves.contains(&(j, i)) {
                 intercepts.push((j, i));
             }
-            j = (j as i8 + x_sign) as u8;
-            i = (i as i8 + y_sign) as u8;
         }
         intercepts
     }
