@@ -22,7 +22,7 @@ impl Piece for Queen {
                     break;
                 }
                 let new_pos = (x as u8, y as u8);
-                if game.is_player(new_pos, self.player.other()) {
+                if game.is_player(new_pos, self.player.other()) && !game.try_move_for_check(position, new_pos, self.player) {
                     moves.push(new_pos);
                 }
                 if game.square_is_none(new_pos) {

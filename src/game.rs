@@ -10,6 +10,8 @@ pub struct Game {
     current_player: Player,
     game_over: bool,
     last_double: Option<(u8, u8)>,
+    king_one: (u8, u8),
+    king_two: (u8, u8),
     has_p1_king_moved: bool,
     has_p1_left_rook_moved: bool,
     has_p1_right_rook_moved: bool,
@@ -31,6 +33,8 @@ impl Game {
             current_player: Player::One,
             game_over: false,
             last_double: None,
+            king_one: (4, 7),
+            king_two: (4, 0),
             has_p1_king_moved: false,
             has_p1_left_rook_moved: false,
             has_p1_right_rook_moved: false,
@@ -102,7 +106,7 @@ impl Game {
                         },
                         Move::Invalid => unreachable!()
                     }
-                    self.set_moved(piece.clone(), from);
+                    self.set_moved(piece.clone(), from, to);
                 }
                 if (to.1 == 7 || to.1 == 0) && piece.unwrap().is_type::<Pawn>() {
                     self.promote_piece(to);
@@ -205,7 +209,8 @@ impl Game {
         self.board[y as usize][x as usize] = piece;
     }
 
-    pub(crate) fn in_check(&mut self, king: (u8, u8), player: Player) -> bool {
+    pub(crate) fn in_check(&mut self, player: Player) -> bool {
+        let king = self.get_king(player);
         for i in 0..8 {
             for j in 0..8 {
                 if let Some(piece) = self.get((j,i)) {
@@ -220,21 +225,28 @@ impl Game {
         false
     }
 
+    // fn get_king(&self, player: Player) -> (u8, u8) {
+    //     for i in 0..8 {
+    //         for j in 0..8 {
+    //             if let Some(piece) = self.get((j,i)) {
+    //                 if piece.player() == player && piece.is_type::<King>() {
+    //                     return (j as u8, i as u8);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     panic!("No king found!");
+    // }
+
     fn get_king(&self, player: Player) -> (u8, u8) {
-        for i in 0..8 {
-            for j in 0..8 {
-                if let Some(piece) = self.get((j,i)) {
-                    if piece.player() == player && piece.is_type::<King>() {
-                        return (j as u8, i as u8);
-                    }
-                }
-            }
+        match player {
+            Player::One => self.king_one,
+            Player::Two => self.king_two,
         }
-        panic!("No king found!");
     }
 
     fn player_in_check(&mut self) -> bool {
-        self.in_check(self.get_king(self.current_player), self.current_player)
+        self.in_check(self.current_player)
     }
 
     fn get_move(&mut self) -> ((u8, u8), (u8, u8)) {
@@ -291,19 +303,20 @@ impl Game {
     }
 
     fn checkmate(&mut self) -> bool {
-        let mut king = self.get_king(self.current_player);
-        if !self.in_check(king, self.current_player) {
+        //TODO: fix this with king moving
+        if !self.in_check(self.current_player) {
             return false;
         }
         // for every enemy that can attack king {
-        //     for every square in path from enemy to king {
-        //         for every friendly piece {
-        //             if friendly piece can move to square {
-        //                 return false;
-        //             }
-        //         }
-        //     }
-        // }
+            //     for every square in path from enemy to king {
+                //         for every friendly piece {
+                    //             if friendly piece can move to square {
+                        //                 return false;
+                        //             }
+                        //         }
+                        //     }
+                        // }
+        let king = self.get_king(self.current_player);
         for i in 0..8 {
             for j in 0..8 {
                 if let Some(enemy) = self.get((j,i)) {
@@ -321,12 +334,13 @@ impl Game {
                                                 let old = self.get(square);
                                                 self.set(square, Some(friendly.clone()));
                                                 self.set((l,k), None);
-                                                if !self.square_is_king(king) {
-                                                    king = self.get_king(self.current_player);
+                                                if friendly.is_type::<King>() {
+                                                    self.set_king(self.current_player, square)
                                                 }
-                                                let still_in_check = self.in_check(king, self.current_player);
+                                                let still_in_check = self.in_check(self.current_player);
                                                 self.set((l,k), Some(friendly.clone()));
                                                 self.set(square, old);
+                                                self.set_king(self.current_player, king);
                                                 if !still_in_check {
                                                     return false;
                                                 }
@@ -346,9 +360,19 @@ impl Game {
             if new_x < 0 || new_x >= 8 || new_y < 0 || new_y >= 8 {
                 continue;
             }
-            let (new_x, new_y) = (new_x as u8, new_y as u8);
-            if !self.is_current_player((new_x,new_y)) && !self.in_check((new_x,new_y), self.current_player) {
-                return false;
+            let new_pos = (new_x as u8, new_y as u8);
+            if !self.is_current_player(new_pos) {
+                let old = self.get(new_pos);
+                self.set(new_pos, self.get(king));
+                self.set(king, None);
+                self.set_king(self.current_player, new_pos);
+                let still_in_check = self.in_check(self.current_player);
+                self.set(king, self.get(new_pos));
+                self.set(new_pos, old);
+                self.set_king(self.current_player, king);
+                if !still_in_check {
+                    return false;
+                }
             }
         }
         true
@@ -377,7 +401,7 @@ impl Game {
 
     #[allow(dead_code)]
     pub(crate) fn can_castle(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
-        if self.in_check(from, self.current_player) {
+        if self.in_check(self.current_player) {
             return false;
         }
         let (x,y) = from;
@@ -435,12 +459,18 @@ impl Game {
         }
     }
 
-    fn set_moved(&mut self, piece: Square, from: (u8, u8)) {
+    fn set_moved(&mut self, piece: Square, from: (u8, u8), to: (u8, u8)) {
         let piece = piece.unwrap();
         if piece.is_type::<King>() {
             match piece.player() {
-                Player::One => self.has_p1_king_moved = true,
-                Player::Two => self.has_p2_king_moved = true,
+                Player::One => {
+                    self.king_one = to;
+                    self.has_p1_king_moved = true
+                },
+                Player::Two => {
+                    self.king_two = to;
+                    self.has_p2_king_moved = true
+                },
             }
         } else if piece.is_type::<Rook>() {
             match piece.player() {
@@ -510,14 +540,21 @@ impl Game {
         }
     }
 
-    pub(crate) fn try_position_for_check(&mut self, from: (u8, u8), to: (u8, u8), player: Player) -> bool {
+    pub(crate) fn try_move_for_check(&mut self, from: (u8, u8), to: (u8, u8), player: Player) -> bool {
         let old = self.get(to);
         self.set(to, self.get(from));
         self.set(from, None);
-        let in_check = self.in_check(to, player);
+        let in_check = self.in_check(player);
         self.set(from, self.get(to));
         self.set(to, old);
         in_check
+    }
+
+    fn set_king(&mut self, player: Player, king: (u8, u8)) {
+        match player {
+            Player::One => self.king_one = king,
+            Player::Two => self.king_two = king,
+        }
     }
 }
 
@@ -556,12 +593,13 @@ mod tests {
     #[test]
     fn checkmate_no_friendlies() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
-        board[1][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::One));
+        board[1][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::One));
 
         let mut game = Game::new();
         game.set_board(board);
+        game.set_king(Player::One, (0,0));
 
         assert!(game.checkmate());
     }
@@ -569,13 +607,14 @@ mod tests {
     #[test]
     fn checkmate_no_friendlies2() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
-        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[0][2] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::One));
+        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[0][2] = Some(<dyn Piece>::new_piece::<Queen>(Player::One));
         
         let mut game = Game::new();
         game.set_board(board);
+        game.set_king(Player::One, (0,0));
 
         print!("{game}");
 
@@ -585,12 +624,13 @@ mod tests {
     #[test]
     fn no_checkmate_no_friendlies() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
 
         let mut game = Game::new();
         game.set_board(board);
+        game.set_king(Player::One, (0,0));
 
         print!("{game}");
         
@@ -600,11 +640,13 @@ mod tests {
     #[test]
     fn no_checkmate_blockable() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Knight>(Player::One));
-        board[2][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Knight>(Player::Two));
+        board[2][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::One));
+
         let mut game = Game::new();
         game.set_board(board);
+        game.set_king(Player::One, (0,0));
 
         print!("{game}");
 
@@ -614,14 +656,15 @@ mod tests {
     #[test]
     fn checkmate_unblockable() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[1][1] = Some(<dyn Piece>::new_piece::<Pawn>(Player::One));
-        board[3][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[1][1] = Some(<dyn Piece>::new_piece::<Pawn>(Player::Two));
+        board[3][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::One));
 
         
         let mut game = Game::new();
         game.set_board(board);
+        game.set_king(Player::One, (0,0));
 
         assert!(game.checkmate());
     }
@@ -629,16 +672,16 @@ mod tests {
     #[test]
     fn moving_king_and_rooks() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
 
         let mut game = Game::new();
         game.set_board(board);
 
-
+        //TODO: finish
     }
 }
