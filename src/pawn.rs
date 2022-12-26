@@ -53,7 +53,7 @@ impl Piece for Pawn {
         moves
     }
 
-    fn valid_move(&self, from: (u8,u8), to: (u8,u8), game: &Game) -> Move {
+    fn valid_move(&self, from: (u8,u8), to: (u8,u8), game: &mut Game) -> Move {
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         let sign = match self.player {
             Player::One => -1,

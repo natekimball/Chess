@@ -10,7 +10,7 @@ use crate::player::Player;
 //should I wrap legal moves in a enum?
 
 pub trait Piece: Display + DynClone {
-    fn valid_move(&self, from: (u8, u8), to: (u8, u8), game: &Game) -> Move;
+    fn valid_move(&self, from: (u8, u8), to: (u8, u8), game: &mut Game) -> Move;
     fn get_legal_moves(&self, position: (u8, u8), game: &mut Game) -> Vec<(u8, u8)>;
     fn player(&self) -> Player;
     fn can_intercept_path(

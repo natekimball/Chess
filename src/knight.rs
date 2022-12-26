@@ -26,7 +26,7 @@ impl Piece for Knight {
         moves
     }
 
-    fn valid_move(&self, from: (u8,u8), to: (u8,u8), _: &Game) -> Move {
+    fn valid_move(&self, from: (u8,u8), to: (u8,u8), _: &mut Game) -> Move {
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         let valid = (x.abs() == 2 && y.abs() == 1) || (x.abs() == 1 && y.abs() == 2);
         if valid {Move::Normal} else {Move::Invalid}

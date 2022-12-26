@@ -205,7 +205,7 @@ impl Game {
         self.board[y as usize][x as usize] = piece;
     }
 
-    pub(crate) fn in_check(&self, king: (u8, u8), player: Player) -> bool {
+    pub(crate) fn in_check(&mut self, king: (u8, u8), player: Player) -> bool {
         for i in 0..8 {
             for j in 0..8 {
                 if let Some(piece) = self.get((j,i)) {
@@ -376,7 +376,7 @@ impl Game {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn can_castle(&self, from: (u8, u8), to: (u8, u8)) -> bool {
+    pub(crate) fn can_castle(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
         if self.in_check(from, self.current_player) {
             return false;
         }
