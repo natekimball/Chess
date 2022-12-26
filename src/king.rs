@@ -19,12 +19,12 @@ impl Piece for King {
             }
             let new_pos = (new_pos.0 as u8, new_pos.1 as u8);
             if game.is_not_player(new_pos, self.player) {
-                if !game.try_position_for_check(position, new_pos, self.player) {
+                if !game.try_move_for_check(position, new_pos, self.player) {
                     moves.push(new_pos);
                 }
             }
         }
-        if game.has_king_moved(self.player) || game.in_check(position, self.player) {
+        if game.has_king_moved(self.player) || game.in_check(self.player) {
             return moves;
         }
         if self.can_castle_left(position, game) {
@@ -70,14 +70,14 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y), self.player) {
+        if game.has_king_moved(self.player) || position != (4,y) || game.in_check(self.player) {
             return false;
         }
         if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
             if let Some(rook) = game.get((0,y)) {
                 if rook.is_type::<Rook>() {
                     if !game.has_left_rook_moved(self.player) {
-                        return !game.try_position_for_check((4,y), (2,y), self.player);
+                        return !game.try_move_for_check((4,y), (2,y), self.player);
                     }
                 }
             }
@@ -90,14 +90,14 @@ impl King {
             Player::One => 0,
             Player::Two => 7
         };
-        if game.has_king_moved(self.player) || position != (4,y) || game.in_check((4,y), self.player) {
+        if game.has_king_moved(self.player) || position != (4,y) || game.in_check(self.player) {
             return false;
         }
         if game.square_is_none((5,y)) && game.square_is_none((6,y)) {
             if let Some(rook) = game.get((7,y)) {
                 if rook.is_type::<Rook>() {
                     if !game.has_right_rook_moved(self.player) {
-                        return !game.try_position_for_check((4,y), (6,y), self.player);
+                        return !game.try_move_for_check((4,y), (6,y), self.player);
                     }
                 }
             }
@@ -136,21 +136,21 @@ mod tests {
     #[test]
     fn simple_castles() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
 
         let mut game = Game::new();
         game.set_board(board);
 
         print!("{game}");
 
-        let king1 = game.get((4,0)).unwrap();
+        let king1 = game.get((4,7)).unwrap();
         let king1 = king1.get_piece::<King>().unwrap();
-        let king2 = game.get((4,7)).unwrap();
+        let king2 = game.get((4,0)).unwrap();
         let king2 = king2.get_piece::<King>().unwrap();
 
         assert!(king1.can_castle_left((4,0), &mut game));
@@ -162,12 +162,12 @@ mod tests {
     #[test]
     fn cant_castle_into_check() {
         let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][2] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[7][6] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
+        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        board[7][2] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
+        board[7][6] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
 
         let mut game = Game::new();
         game.set_board(board);
