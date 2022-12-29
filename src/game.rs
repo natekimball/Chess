@@ -294,14 +294,6 @@ impl Game {
         (from, to)
     }
 
-    fn square_is_king(&self, square: (u8, u8)) -> bool {
-        if let Some(piece) = self.get(square) {
-            piece.is_type::<King>()
-        } else {
-            false
-        }
-    }
-
     fn checkmate(&mut self) -> bool {
         //TODO: fix this with king moving
         if !self.in_check(self.current_player) {
