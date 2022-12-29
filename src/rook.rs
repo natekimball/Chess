@@ -12,7 +12,6 @@ pub struct Rook {
 
 impl Piece for Rook {
     fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8,u8)> {
-        //TODO: fix bug
         let mut moves = Vec::new();
         for (x_sign, y_sign) in [(1,0), (-1,0), (0,1), (0,-1)] {
             let mut x = position.0 as i8;
@@ -24,7 +23,7 @@ impl Piece for Rook {
                     break;
                 }
                 let new_pos = (x as u8, y as u8);
-                if game.is_player(new_pos, self.player.other()) && !game.try_move_for_check(position, new_pos, self.player) {
+                if game.is_not_player(new_pos, self.player) && !game.try_move_for_check(position, new_pos, self.player) {
                     moves.push(new_pos);
                 }
                 if game.square_is_none(new_pos) {
@@ -88,6 +87,8 @@ mod tests {
 
         let mut game = Game::new();
         game.set_board(board);
+
+        println!("{game}");
 
         let moves = game.get((3,3)).unwrap().get_legal_moves((4,4), &mut game);
         print!("{:?}", moves);
