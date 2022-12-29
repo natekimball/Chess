@@ -77,3 +77,21 @@ impl Display for Rook {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn list_all_legal_moves() {
+        let mut board = vec![vec![None; 8];8];
+        board[3][3] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+
+        let mut game = Game::new();
+        game.set_board(board);
+
+        let moves = game.get((3,3)).unwrap().get_legal_moves((4,4), &mut game);
+        print!("{:?}", moves);
+
+        assert_eq!(moves.len(), 14);
+    }
+}
