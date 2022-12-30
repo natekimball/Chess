@@ -133,15 +133,17 @@ impl Display for King {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::game::Board;
+
     #[test]
     fn simple_castles() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(Rook::new(Player::Two)));
+        board[0][4] = Some(Box::new(King::new(Player::Two)));
+        board[0][7] = Some(Box::new(Rook::new(Player::Two)));
+        board[7][0] = Some(Box::new(Rook::new(Player::One)));
+        board[7][4] = Some(Box::new(King::new(Player::One)));
+        board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
         game.set_board(board);
@@ -161,13 +163,13 @@ mod tests {
 
     #[test]
     fn cant_castle_into_check() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][2] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[7][6] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(Rook::new(Player::Two)));
+        board[0][4] = Some(Box::new(King::new(Player::Two)));
+        board[0][7] = Some(Box::new(Rook::new(Player::Two)));
+        board[7][2] = Some(Box::new(Rook::new(Player::One)));
+        board[7][4] = Some(Box::new(King::new(Player::One)));
+        board[7][6] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
         game.set_board(board);

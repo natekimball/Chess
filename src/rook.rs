@@ -51,7 +51,7 @@ impl Piece for Rook {
 
     fn name(&self) -> &str {
         "rook"
-    }    
+    }
 }
 
 impl Construct for Rook {
@@ -77,13 +77,23 @@ impl Display for Rook {
     }
 }
 
+impl Rook {
+    pub fn new(player: Player) -> Self {
+        Self {
+            player
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::game::Board;
     use super::*;
+
     #[test]
     fn list_all_legal_moves() {
-        let mut board = vec![vec![None; 8];8];
-        board[3][3] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
+        let mut board: Board = vec![vec![None; 8];8];
+        board[3][3] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
         game.set_board(board);

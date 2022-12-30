@@ -1,9 +1,9 @@
 use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
 use colored::Colorize;
-use crate::{piece::{Piece, Move}, king::King, queen::Queen, rook::Rook, bishop::Bishop, knight::Knight, pawn::Pawn, player::Player};
+use crate::{piece::{Piece, Move, Construct}, king::King, queen::Queen, rook::Rook, bishop::Bishop, knight::Knight, pawn::Pawn, player::Player};
 
-type Square = Option<Box<dyn Piece>>;
-type Board = Vec<Vec<Square>>;
+pub type Square = Option<Box<dyn Piece>>;
+pub type Board = Vec<Vec<Square>>;
 
 pub struct Game {
     board: Vec<Vec<Square>>,
@@ -23,11 +23,12 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let mut board: Board = vec![vec![None; 8]; 8];
-        board[0] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Queen>(Player::Two)), Some(<dyn Piece>::new_piece::<King>(Player::Two)), Some(<dyn Piece>::new_piece::<Bishop>(Player::Two)), Some(<dyn Piece>::new_piece::<Knight>(Player::Two)), Some(<dyn Piece>::new_piece::<Rook>(Player::Two))];
-        board[1] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::Two)); 8];
+        board[0] = vec![Some(Box::new(Rook::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Queen::new(Player::Two))), Some(Box::new(King::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Rook::new(Player::Two)))];
+        board[1] = vec![Some(Box::new(Pawn::new(Player::Two))); 8];
         
-        board[7] = vec![Some(<dyn Piece>::new_piece::<Rook>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Queen>(Player::One)), Some(<dyn Piece>::new_piece::<King>(Player::One)), Some(<dyn Piece>::new_piece::<Bishop>(Player::One)), Some(<dyn Piece>::new_piece::<Knight>(Player::One)), Some(<dyn Piece>::new_piece::<Rook>(Player::One))];
-        board[6] = vec![Some(<dyn Piece>::new_piece::<Pawn>(Player::One)); 8];
+        board[7] = vec![Some(Box::new(Rook::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Queen::new(Player::One))), Some(Box::new(King::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Rook::new(Player::One)))];
+        board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
+
         Game {
             board,
             current_player: Player::One,
@@ -295,7 +296,6 @@ impl Game {
     }
 
     fn checkmate(&mut self) -> bool {
-        //TODO: fix this with king moving
         if !self.in_check(self.current_player) {
             return false;
         }
@@ -377,10 +377,10 @@ impl Game {
         loop {
             io::stdin().read_line(&mut input).unwrap();
             piece = match input.trim().chars().next().unwrap_or(' ').to_ascii_lowercase() {
-                'q' => <dyn Piece>::new_piece::<Queen>(self.current_player),
-                'r' => <dyn Piece>::new_piece::<Rook>(self.current_player),
-                'b' => <dyn Piece>::new_piece::<Bishop>(self.current_player),
-                'k' => <dyn Piece>::new_piece::<Knight>(self.current_player),
+                'q' => Box::new(Queen::new(self.current_player)),
+                'r' => Box::new(Rook::new(self.current_player)),
+                'b' => Box::new(Bishop::new(self.current_player)),
+                'k' => Box::new(Knight::new(self.current_player)),
                 _ => {
                     println!("Invalid piece! Enter another.");
                     continue;
@@ -584,10 +584,10 @@ mod tests {
 
     #[test]
     fn checkmate_no_friendlies() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
-        board[1][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(King::new(Player::One)));
+        board[0][1] = Some(Box::new(Queen::new(Player::Two)));
+        board[1][0] = Some(Box::new(Queen::new(Player::Two)));
 
         let mut game = Game::new();
         game.set_board(board);
@@ -598,11 +598,11 @@ mod tests {
 
     #[test]
     fn checkmate_no_friendlies2() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
-        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[0][2] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(King::new(Player::One)));
+        board[0][1] = Some(Box::new(Queen::new(Player::Two)));
+        board[1][0] = Some(Box::new(Rook::new(Player::Two)));
+        board[0][2] = Some(Box::new(Queen::new(Player::Two)));
         
         let mut game = Game::new();
         game.set_board(board);
@@ -615,10 +615,10 @@ mod tests {
 
     #[test]
     fn no_checkmate_no_friendlies() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[1][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(King::new(Player::One)));
+        board[0][1] = Some(Box::new(Rook::new(Player::Two)));
+        board[1][0] = Some(Box::new(Rook::new(Player::Two)));
 
         let mut game = Game::new();
         game.set_board(board);
@@ -631,10 +631,10 @@ mod tests {
 
     #[test]
     fn no_checkmate_blockable() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Knight>(Player::One));
-        board[2][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(King::new(Player::One)));
+        board[0][1] = Some(Box::new(Knight::new(Player::One)));
+        board[2][0] = Some(Box::new(Queen::new(Player::Two)));
 
         let mut game = Game::new();
         game.set_board(board);
@@ -647,11 +647,11 @@ mod tests {
 
     #[test]
     fn checkmate_unblockable() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][1] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[1][1] = Some(<dyn Piece>::new_piece::<Pawn>(Player::One));
-        board[3][0] = Some(<dyn Piece>::new_piece::<Queen>(Player::Two));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(King::new(Player::One)));
+        board[0][1] = Some(Box::new(Rook::new(Player::One)));
+        board[1][1] = Some(Box::new(Pawn::new(Player::One)));
+        board[3][0] = Some(Box::new(Queen::new(Player::Two)));
 
         
         let mut game = Game::new();
@@ -663,13 +663,13 @@ mod tests {
 
     #[test]
     fn moving_king_and_rooks() {
-        let mut board = vec![vec![None;8];8];
-        board[0][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[0][4] = Some(<dyn Piece>::new_piece::<King>(Player::One));
-        board[0][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::One));
-        board[7][0] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
-        board[7][4] = Some(<dyn Piece>::new_piece::<King>(Player::Two));
-        board[7][7] = Some(<dyn Piece>::new_piece::<Rook>(Player::Two));
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][0] = Some(Box::new(Rook::new(Player::One)));
+        board[0][4] = Some(Box::new(King::new(Player::One)));
+        board[0][7] = Some(Box::new(Rook::new(Player::One)));
+        board[7][0] = Some(Box::new(Rook::new(Player::Two)));
+        board[7][4] = Some(Box::new(King::new(Player::Two)));
+        board[7][7] = Some(Box::new(Rook::new(Player::Two)));
 
         let mut game = Game::new();
         game.set_board(board);
