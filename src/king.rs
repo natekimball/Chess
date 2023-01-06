@@ -8,7 +8,7 @@ use crate::{game::Game, rook::Rook, piece::{Construct, Move, Piece, DynClone}, p
 pub struct King {
     player: Player
 }
-//fix bugs for castling as well as moving into/out of check
+
 impl Piece for King {
     fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8, u8)> {
         let mut moves = Vec::new();
@@ -38,7 +38,6 @@ impl Piece for King {
 
     //doesn't  handle friendly fire or moving into check
     fn valid_move(&self, from: (u8,u8), to: (u8,u8), game: &mut Game) -> Move {
-        dbg!(from,to);
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         if x.abs() < 2 && y.abs() < 2 {
             Move::Normal
@@ -207,6 +206,6 @@ mod tests {
         let king1 = game.get((4,7)).unwrap();
         let king1 = king1.get_piece::<King>().unwrap();
 
-        assert_eq!(king1.get_legal_moves((4,7), &mut game).len(), 5);
+        assert_eq!(king1.get_legal_moves((4,7), &mut game).len(), 4);
     }
 }

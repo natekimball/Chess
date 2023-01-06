@@ -100,7 +100,7 @@ mod tests {
 
         println!("{game}");
 
-        let moves = game.get((3,3)).unwrap().get_legal_moves((4,4), &mut game);
+        let moves = game.get((3,3)).unwrap().get_legal_moves((3,3), &mut game);
         print!("{:?}", moves);
 
         assert_eq!(moves.len(), 14);
