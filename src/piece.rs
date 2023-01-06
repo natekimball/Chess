@@ -3,11 +3,8 @@ use std::{
     fmt::{Display},
 };
 
-// use colored::{Colorize};
 use crate::game::Game;
 use crate::player::Player;
-
-//should I wrap legal moves in a enum?
 
 pub trait Piece: Display + DynClone {
     fn valid_move(&self, from: (u8, u8), to: (u8, u8), game: &mut Game) -> Move;
