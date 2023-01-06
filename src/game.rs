@@ -218,10 +218,11 @@ impl Game {
         if piece.name() == "king" {
             self.game_over = true;
         }
-        println!("You took {}'s {}!", match self.current_player {
-            Player::One => Player::Two,
-            Player::Two => Player::Two,
-        }, piece.name());
+        println!("You took {}'s {}!", self.current_player.other(), piece.name());
+        match self.current_player {
+            Player::One => self.p2_pieces.retain(|&x| x != to),
+            Player::Two => self.p1_pieces.retain(|&x| x != to),
+        }
     }
 
     pub(crate) fn get(&self, (x, y): (u8, u8)) -> Square {
