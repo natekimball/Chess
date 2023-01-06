@@ -17,7 +17,9 @@ pub struct Game {
     has_p1_right_rook_moved: bool,
     has_p2_king_moved: bool,
     has_p2_left_rook_moved: bool,
-    has_p2_right_rook_moved: bool
+    has_p2_right_rook_moved: bool,
+    p1_pieces: Vec<(u8, u8)>,
+    p2_pieces: Vec<(u8, u8)>,
 }
 
 impl Game {
@@ -49,6 +51,8 @@ impl Game {
             has_p2_king_moved: false,
             has_p2_left_rook_moved: false,
             has_p2_right_rook_moved: false,
+            p1_pieces: vec![(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7), (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)],
+            p2_pieces: vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]
         }
     }
 
@@ -108,6 +112,9 @@ impl Game {
                         },
                         Move::Castle => {
                             self.castle(to);
+                            let rook_from = if to.0 == 6 { 7 } else { 0 };
+                            let rook_to = if to.0 == 6 { 5 } else { 3 };
+                            self.set_pieces((rook_from, from.1), (rook_to, from.1));
                         },
                         Move::EnPassant(position) => {
                             self.take(position, None);
@@ -120,6 +127,7 @@ impl Game {
                     self.promote_piece(to);
                 }
                 valid_move = true;
+                self.set_pieces(from, to)
             } else {
                 println!("You must move one of your own pieces!");
             }
@@ -131,10 +139,17 @@ impl Game {
             println!("{self}");
             println!("{} wins!", self.current_player);
         }
-        self.current_player = match self.current_player {
-            Player::One => Player::Two,
-            Player::Two => Player::One
+        self.current_player = self.current_player.other();
+    }
+
+    pub fn make_move(&mut self, from: (u8,u8), to: (u8,u8)) {
+        let piece = self.get(from);
+        let conquered = self.get(to);
+        let move_status = piece.clone().unwrap().valid_move(from, to, self);
+        if move_status == Move::Invalid {
+            panic!("Invalid move!");
         }
+        // handle an algorithms move
     }
 
     pub fn is_over(&mut self) -> bool {
@@ -232,19 +247,6 @@ impl Game {
         }
         false
     }
-
-    // fn get_king(&self, player: Player) -> (u8, u8) {
-    //     for i in 0..8 {
-    //         for j in 0..8 {
-    //             if let Some(piece) = self.get((j,i)) {
-    //                 if piece.player() == player && piece.is_type::<King>() {
-    //                     return (j as u8, i as u8);
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     panic!("No king found!");
-    // }
 
     fn get_king(&self, player: Player) -> (u8, u8) {
         match player {
@@ -543,6 +545,26 @@ impl Game {
         match player {
             Player::One => self.king_one = king,
             Player::Two => self.king_two = king,
+        }
+    }
+
+    pub fn get_pieces(&self, player: Player) -> &Vec<(u8, u8)> {
+        match player {
+            Player::One => &self.p1_pieces,
+            Player::Two => &self.p2_pieces,
+        }
+    }
+
+    fn set_pieces(&mut self, from: (u8, u8), to: (u8, u8)) {
+        match self.current_player {
+            Player::One => {
+                self.p1_pieces.retain(|x| *x != from);
+                self.p1_pieces.push(to);
+            },
+            Player::Two => {
+                self.p2_pieces.retain(|x| *x != from);
+                self.p2_pieces.push(to);
+            },
         }
     }
 }
