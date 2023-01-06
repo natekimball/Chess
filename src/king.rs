@@ -8,7 +8,7 @@ use crate::{game::Game, rook::Rook, piece::{Construct, Move, Piece, DynClone}, p
 pub struct King {
     player: Player
 }
-
+//fix bugs for castling as well as moving into/out of check
 impl Piece for King {
     fn get_legal_moves(&self, position: (u8,u8), game: &mut Game) -> Vec<(u8, u8)> {
         let mut moves = Vec::new();
@@ -38,6 +38,7 @@ impl Piece for King {
 
     //doesn't  handle friendly fire or moving into check
     fn valid_move(&self, from: (u8,u8), to: (u8,u8), game: &mut Game) -> Move {
+        dbg!(from,to);
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         if x.abs() < 2 && y.abs() < 2 {
             Move::Normal
@@ -67,8 +68,8 @@ impl Piece for King {
 impl King {
     fn can_castle_left(&self, position: (u8,u8), game: &mut Game) -> bool {
         let y = match self.player {
-            Player::One => 0,
-            Player::Two => 7
+            Player::One => 7,
+            Player::Two => 0
         };
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check(self.player) {
             return false;
@@ -87,8 +88,8 @@ impl King {
 
     fn can_castle_right(&self , position: (u8,u8), game: &mut Game) -> bool {
         let y = match self.player {
-            Player::One => 0,
-            Player::Two => 7
+            Player::One => 7,
+            Player::Two => 0
         };
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check(self.player) {
             return false;
@@ -155,10 +156,10 @@ mod tests {
         let king2 = game.get((4,0)).unwrap();
         let king2 = king2.get_piece::<King>().unwrap();
 
-        assert!(king1.can_castle_left((4,0), &mut game));
-        assert!(king1.can_castle_right((4,0), &mut game));
-        assert!(king2.can_castle_left((4,7), &mut game));
-        assert!(king2.can_castle_right((4,7), &mut game));
+        assert!(king1.can_castle_left((4,7), &mut game));
+        assert!(king1.can_castle_right((4,7), &mut game));
+        assert!(king2.can_castle_left((4,0), &mut game));
+        assert!(king2.can_castle_right((4,0), &mut game));
     }
 
     #[test]
@@ -181,9 +182,9 @@ mod tests {
         let king2 = game.get((4,7)).unwrap();
         let king2 = king2.get_piece::<King>().unwrap();
 
-        assert!(!king1.can_castle_left((4,0), &mut game));
-        assert!(!king1.can_castle_right((4,0), &mut game));
-        assert!(!king2.can_castle_left((4,6), &mut game));
-        assert!(!king2.can_castle_right((4,6), &mut game));
+        assert!(!king1.can_castle_left((4,7), &mut game));
+        assert!(!king1.can_castle_right((4,7), &mut game));
+        assert!(!king2.can_castle_left((4,0), &mut game));
+        assert!(!king2.can_castle_right((4,0), &mut game));
     }
 }

@@ -23,11 +23,18 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let mut board: Board = vec![vec![None; 8]; 8];
-        board[0] = vec![Some(Box::new(Rook::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Queen::new(Player::Two))), Some(Box::new(King::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Rook::new(Player::Two)))];
-        board[1] = vec![Some(Box::new(Pawn::new(Player::Two))); 8];
+        // board[0] = vec![Some(Box::new(Rook::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Queen::new(Player::Two))), Some(Box::new(King::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Rook::new(Player::Two)))];
+        // board[1] = vec![Some(Box::new(Pawn::new(Player::Two))); 8];
         
-        board[7] = vec![Some(Box::new(Rook::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Queen::new(Player::One))), Some(Box::new(King::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Rook::new(Player::One)))];
-        board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
+        // board[7] = vec![Some(Box::new(Rook::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Queen::new(Player::One))), Some(Box::new(King::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Rook::new(Player::One)))];
+        // board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
+        
+        board[0][0] = Some(Box::new(Rook::new(Player::Two)));
+        board[0][4] = Some(Box::new(King::new(Player::Two)));
+        board[0][7] = Some(Box::new(Rook::new(Player::Two)));
+        board[7][0] = Some(Box::new(Rook::new(Player::One)));
+        board[7][4] = Some(Box::new(King::new(Player::One)));
+        board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
         Game {
             board,
