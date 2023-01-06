@@ -134,7 +134,7 @@ impl Display for King {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Board;
+    use crate::{game::Board, knight::Knight};
 
     #[test]
     fn simple_castles() {
@@ -160,6 +160,9 @@ mod tests {
         assert!(king1.can_castle_right((4,7), &mut game));
         assert!(king2.can_castle_left((4,0), &mut game));
         assert!(king2.can_castle_right((4,0), &mut game));
+
+        assert_eq!(king1.get_legal_moves((4,7), &mut game).len(), 7);
+        assert_eq!(king2.get_legal_moves((4,0), &mut game).len(), 7);
     }
 
     #[test]
@@ -186,5 +189,24 @@ mod tests {
         assert!(!king1.can_castle_right((4,7), &mut game));
         assert!(!king2.can_castle_left((4,0), &mut game));
         assert!(!king2.can_castle_right((4,0), &mut game));
+    }
+
+    #[test]
+    fn moving_out_of_check() {
+        let mut board: Board = vec![vec![None;8];8];
+        board[5][3] = Some(Box::new(Knight::new(Player::Two)));
+        board[7][0] = Some(Box::new(Rook::new(Player::One)));
+        board[7][4] = Some(Box::new(King::new(Player::One)));
+        board[7][7] = Some(Box::new(Rook::new(Player::One)));
+
+        let mut game = Game::new();
+        game.set_board(board);
+
+        print!("{game}");
+
+        let king1 = game.get((4,7)).unwrap();
+        let king1 = king1.get_piece::<King>().unwrap();
+
+        assert_eq!(king1.get_legal_moves((4,7), &mut game).len(), 5);
     }
 }
