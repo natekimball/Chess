@@ -330,17 +330,7 @@ impl Game {
                                             //for every friendly piece, see if it can block the path and get us out of check
                                             // print!("{:?}", friendly.can_intercept_path((l,k), (j,i), king, self));
                                             for square in friendly.can_intercept_path((l,k), (j,i), king, self) {
-                                                let old = self.get(square);
-                                                self.set(square, Some(friendly.clone()));
-                                                self.set((l,k), None);
-                                                if friendly.is_type::<King>() {
-                                                    self.set_king(self.current_player, square)
-                                                }
-                                                let still_in_check = self.in_check(self.current_player);
-                                                self.set((l,k), Some(friendly.clone()));
-                                                self.set(square, old);
-                                                self.set_king(self.current_player, king);
-                                                if !still_in_check {
+                                                if !self.try_move_for_check((l,k), square, self.current_player) {
                                                     return false;
                                                 }
                                             }
@@ -361,15 +351,7 @@ impl Game {
             }
             let new_pos = (new_x as u8, new_y as u8);
             if !self.is_current_player(new_pos) {
-                let old = self.get(new_pos);
-                self.set(new_pos, self.get(king));
-                self.set(king, None);
-                self.set_king(self.current_player, new_pos);
-                let still_in_check = self.in_check(self.current_player);
-                self.set(king, self.get(new_pos));
-                self.set(new_pos, old);
-                self.set_king(self.current_player, king);
-                if !still_in_check {
+                if !self.try_move_for_check(king, new_pos, self.current_player) {
                     return false;
                 }
             }
@@ -540,13 +522,21 @@ impl Game {
     }
 
     pub(crate) fn try_move_for_check(&mut self, from: (u8, u8), to: (u8, u8), player: Player) -> bool {
+        let friendly = self.get(from);
+        let is_king = friendly.clone().unwrap().is_type::<King>();
         let old = self.get(to);
-        self.set(to, self.get(from));
+        self.set(to, friendly.clone());
         self.set(from, None);
-        let in_check = self.in_check(player);
-        self.set(from, self.get(to));
+        if is_king {
+            self.set_king(player, to);
+        }
+        let still_in_check = self.in_check(player);
+        self.set(from, friendly);
         self.set(to, old);
-        in_check
+        if is_king {
+            self.set_king(player, from);
+        }
+        still_in_check
     }
 
     fn set_king(&mut self, player: Player, king: (u8, u8)) {
