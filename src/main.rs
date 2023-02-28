@@ -1,3 +1,4 @@
+extern crate tensorflow;
 mod game;
 mod piece;
 mod king;
@@ -7,6 +8,8 @@ mod bishop;
 mod knight;
 mod pawn;
 mod player;
+mod lambdaZero;
+
 use game::Game;
 
 fn main() {

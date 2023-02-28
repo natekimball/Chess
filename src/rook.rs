@@ -52,6 +52,10 @@ impl Piece for Rook {
     fn name(&self) -> &str {
         "rook"
     }
+
+    fn value(&self) -> i32 {
+        5
+    }
 }
 
 impl Construct for Rook {
@@ -96,6 +100,7 @@ mod tests {
         board[3][3] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
+        game.set_pieces(vec![(3,3)], vec![]);
         game.set_board(board);
 
         println!("{game}");

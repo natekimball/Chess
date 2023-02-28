@@ -51,6 +51,10 @@ impl Piece for Queen {
     fn name(&self) -> &str {
         "queen"
     }
+
+    fn value(&self) -> i32 {
+        9
+    }
 }
 
 impl Construct for Queen {

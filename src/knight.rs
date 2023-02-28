@@ -43,6 +43,10 @@ impl Piece for Knight {
     fn name(&self) -> &str {
         "knight"
     }
+
+    fn value(&self) -> i32 {
+        3
+    }
 }
 
 impl Construct for Knight {
