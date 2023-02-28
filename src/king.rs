@@ -62,6 +62,10 @@ impl Piece for King {
     fn name(&self) -> &str {
         "king"
     }
+
+    fn value(&self) -> i32 {
+        100
+    }
 }
 
 impl King {
@@ -132,6 +136,8 @@ impl Display for King {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
     use crate::{game::Board, knight::Knight};
 
@@ -146,6 +152,7 @@ mod tests {
         board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
+        game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
 
         print!("{game}");
@@ -175,6 +182,7 @@ mod tests {
         board[7][6] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
+        game.set_pieces(vec![(2,7),(4,7),(6,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
 
         print!("{game}");
@@ -199,6 +207,7 @@ mod tests {
         board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
         let mut game = Game::new();
+        game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(3,5)]);
         game.set_board(board);
 
         print!("{game}");

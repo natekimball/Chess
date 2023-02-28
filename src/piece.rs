@@ -39,6 +39,7 @@ pub trait Piece: Display + DynClone {
     }
     fn as_any(&self) -> &dyn Any;
     fn name(&self) -> &str;
+    fn value(&self) -> i32;
 }
 
 pub trait DynClone {

@@ -51,6 +51,10 @@ impl Piece for Bishop {
     fn name(&self) -> &str {
         "bishop"
     }
+
+    fn value(&self) -> i32 {
+        3
+    }
 }
 
 impl Construct for Bishop {

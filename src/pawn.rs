@@ -94,6 +94,10 @@ impl Piece for Pawn {
     fn name(&self) -> &str {
         "pawn"
     }
+
+    fn value(&self) -> i32 {
+        1
+    }
 }
 
 impl Construct for Pawn {
