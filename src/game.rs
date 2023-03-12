@@ -230,10 +230,6 @@ impl Game {
         moves
     }
 
-    // pub fn validate_move(&mut self) {
-
-    // }
-
     pub fn get_possible_boards(&mut self, player: Player) -> Vec<Game> {
         let mut boards = Vec::new();
         let pieces = match player {
@@ -336,7 +332,7 @@ impl Game {
             Player::One => self.p2_pieces.retain(|&x| x != to),
             Player::Two => self.p1_pieces.retain(|&x| x != to),
         }
-        // display taken pieces
+        // display taken pieces?
     }
 
     pub(crate) fn get(&self, (x, y): (u8, u8)) -> Square {
@@ -348,19 +344,7 @@ impl Game {
     }
 
     pub(crate) fn in_check(&mut self, player: Player) -> bool {
-        //use saved pieces
         let king = self.get_king(player);
-        // for i in 0..8 {
-        //     for j in 0..8 {
-        //         if let Some(piece) = self.get((j,i)) {
-        //             if piece.player() != player {
-        //                 if piece.valid_move((j as u8,i as u8), king, self) != Move::Invalid {
-        //                     return true;
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
         let enemy_pieces = match player {
             Player::One => self.p2_pieces.clone(),
             Player::Two => self.p1_pieces.clone(),
@@ -673,7 +657,12 @@ impl Game {
         let friendly = self.get(from);
         let is_king = friendly.clone().unwrap().is_type::<King>();
         let old = self.get(to);
-        self.set(to, friendly.clone());
+        let enemy_pieces = self.get_pieces(player.other()).clone();
+        if old.is_some() {
+            self.take(to, friendly.clone());
+        } else {
+            self.set(to, friendly.clone());
+        }
         self.set(from, None);
         if is_king {
             self.set_king(player, to);
@@ -684,6 +673,7 @@ impl Game {
         if is_king {
             self.set_king(player, from);
         }
+        self.set_player_pieces(player.other(), enemy_pieces);
         still_in_check
     }
 
@@ -714,34 +704,11 @@ impl Game {
         }
     }
 
-    // pub fn log(&self) {
-    //     // console.log the board
-    //     let board = format!("{self}");
-
-    //     // console::log_1(&JsValue::from_str(&board));
-    //     console::log_1(&board.into());
-    // }
-
-    pub fn matrix(&self) -> Vec<Vec<i32>> {
-        // let mut board = String::new();
-        // self.board.iter().enumerate().for_each(|(i, row)| {
-        //     row.iter().enumerate().for_each(|(j, piece)| {
-        //         match piece {
-        //             Some(piece) => board.push_str(&format!("{}{i}{j}",piece.letter())),
-        //             None => board.push_str(" "),
-        //         }
-        //     })
-        // });
-        let mut board = vec![vec![0; 8]; 8];
-        self.board.iter().enumerate().for_each(|(i, row)| {
-            row.iter().enumerate().for_each(|(j, piece)| {
-                match piece {
-                    Some(piece) => board[i][j] = if piece.player() == self.current_player { piece.value() } else { -piece.value() },
-                    None => (),
-                }
-            })
-        });
-        board
+    pub(crate) fn set_player_pieces(&mut self, player: Player, pieces: Vec<(u8, u8)>) {
+        match player {
+            Player::One => self.p1_pieces = pieces.to_vec(),
+            Player::Two => self.p2_pieces = pieces.to_vec(),
+        }
     }
 }
 
