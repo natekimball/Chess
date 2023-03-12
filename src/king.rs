@@ -41,7 +41,6 @@ impl Piece for King {
         let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
         if x.abs() < 2 && y.abs() < 2 {
             Move::Normal
-        // } else if game.can_castle(from, to) {
         } else if to.0 == 2 && to.1 == from.1 && self.can_castle_left(from, game) {
             Move::Castle
         } else if to.0 == 6 && to.1 == from.1 && self.can_castle_right(from, game) {
