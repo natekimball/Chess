@@ -216,11 +216,7 @@ impl Game {
 
     pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8,u8),Vec<(u8,u8)>)> {
         let mut moves = Vec::new();
-        let pieces = match player {
-            Player::One => self.p1_pieces.clone(),
-            Player::Two => self.p2_pieces.clone()
-        };
-        for position in pieces {
+        for position in self.get_pieces(player).clone() {
             let piece = self.get(position).expect("Piece not found!");
             let piece_moves = piece.get_legal_moves(position, self);
             if !moves.is_empty() {
@@ -232,11 +228,7 @@ impl Game {
 
     pub fn get_possible_boards(&mut self, player: Player) -> Vec<Game> {
         let mut boards = Vec::new();
-        let pieces = match player {
-            Player::One => self.p1_pieces.clone(),
-            Player::Two => self.p2_pieces.clone()
-        };
-        for position in pieces {
+        for position in self.get_pieces(player).clone() {
             let piece = self.get(position).expect("Piece not found!");
             let piece_moves = piece.get_legal_moves(position, self);
             for to in piece_moves {
@@ -345,11 +337,7 @@ impl Game {
 
     pub(crate) fn in_check(&mut self, player: Player) -> bool {
         let king = self.get_king(player);
-        let enemy_pieces = match player {
-            Player::One => self.p2_pieces.clone(),
-            Player::Two => self.p1_pieces.clone(),
-        };
-        for position in enemy_pieces {
+        for position in self.get_pieces(player.other()).clone() {
             let piece = self.get(position).unwrap();
             if piece.valid_move(position, king, self) != Move::Invalid {
                 return true;
@@ -372,6 +360,9 @@ impl Game {
     fn get_move(&mut self) -> ((u8, u8), (u8, u8)) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
+        if input.to_ascii_lowercase().trim() == "exit" {
+            std::process::exit(0);
+        }
         let mut input = input.split_whitespace();
         let from = input.next();
         let to = input.next();

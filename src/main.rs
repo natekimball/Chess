@@ -8,7 +8,7 @@ mod bishop;
 mod knight;
 mod pawn;
 mod player;
-mod lambdaZero;
+// mod chess_ai;
 
 use game::Game;
 
@@ -23,6 +23,12 @@ fn launch_game() -> bool {
     let mut game = Game::new();
 
     while !game.is_over() {
+        // if cfg!(target_os = "windows") {
+        //     std::process::Command::new("cls").status().unwrap();
+        // } else {
+        //     std::process::Command::new("clear").status().unwrap();
+        // }
+        print!("\x1b[200S\x1b[1H");
         game.turn();
     }
     
