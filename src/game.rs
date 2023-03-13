@@ -265,6 +265,7 @@ impl Game {
     }
 
     pub fn play_again(&self) -> bool {
+        println!("{self}");
         println!("Game over!");
         println!("{} wins!", self.current_player);
         println!("Play again? (y/n)");
