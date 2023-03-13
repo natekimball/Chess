@@ -1,12 +1,9 @@
 use std::{io, fmt::{Display, Formatter, Error}, cmp::{min, max}};
 use colored::Colorize;
-// use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{piece::{Piece, Move, Construct}, king::King, queen::Queen, rook::Rook, bishop::Bishop, knight::Knight, pawn::Pawn, player::Player};
-// use web_sys::console;
 
 pub type Square = Option<Box<dyn Piece>>;
 pub type Board = Vec<Vec<Square>>;
-
 
 #[derive(Clone)]
 pub struct Game {
@@ -24,6 +21,8 @@ pub struct Game {
     has_p2_right_rook_moved: bool,
     p1_pieces: Vec<(u8, u8)>,
     p2_pieces: Vec<(u8, u8)>,
+    half_move_clock: u8,
+    full_move_clock: u8
 }
 
 impl Game {
@@ -49,7 +48,9 @@ impl Game {
             has_p2_left_rook_moved: false,
             has_p2_right_rook_moved: false,
             p1_pieces: vec![(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7), (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)],
-            p2_pieces: vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]
+            p2_pieces: vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)],
+            half_move_clock: 0,
+            full_move_clock: 1
         }
     }
 
@@ -67,17 +68,23 @@ impl Game {
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
-        // println!("{:?}", match self.current_player { Player::One => self.p1_pieces.clone(), Player::Two => self.p2_pieces.clone()});
+        if self.stalemate() {
+            println!("Player {} is in stalemate!", self.current_player.number());
+            self.game_over = true;
+            return;
+        }
         let mut in_check = false;
         if self.player_in_check() {
             println!("You're in check!");
             in_check = true;
         }
+        self.tick();
         println!("Enter your move (e.g. a2 a4) or enter a position to see its possible moves (e.g. a2):");
 
         let mut valid_move = false;
         while !valid_move {
             let (from, to) = self.get_move();
+            let mut half_move = false;
             if self.is_current_player(from) {
                 let piece = self.get(from);
                 let conquered = self.get(to);
@@ -91,6 +98,7 @@ impl Game {
                         println!("You can't take your own piece! go again.");
                         continue;
                     } else {
+                        half_move = true;
                         self.take(to, piece.clone());
                         self.set(from, None);
                     }
@@ -125,10 +133,16 @@ impl Game {
                         },
                         Move::Invalid => unreachable!()
                     }
+                    if piece.clone().unwrap().is_type::<Pawn>() {
+                        half_move = true;
+                    }
                     self.set_moved(piece.clone(), from, to);
                 }
                 if (to.1 == 7 || to.1 == 0) && piece.unwrap().is_type::<Pawn>() {
                     self.promote_piece(to);
+                }
+                if half_move {
+                    self.half_move_clock = 0;
                 }
                 valid_move = true;
                 self.move_piece(from, to)
@@ -187,10 +201,7 @@ impl Game {
     }
 
     pub fn get_algorithm_move(&mut self) -> ((u8,u8), (u8,u8)) {
-        // let pieces = match self.current_player {
-        //     Player::One => &self.p1_pieces,
-        //     Player::Two => &self.p2_pieces
-        // };
+        // let pieces = self.get_pieces(self.current_player);
         let possible_moves = self.get_possible_moves(self.current_player);
         if possible_moves.is_empty() {
             print!("No possible moves for player {}!", self.current_player);
@@ -315,16 +326,20 @@ impl Game {
 
     pub(crate) fn take(&mut self,  to: (u8, u8), new_piece: Square) {
         let piece = self.get(to).unwrap();
-        self.set(to, new_piece);
         if piece.name() == "king" {
-            self.game_over = true;
+            panic!("You can't take a king, something went wrong!");
         }
         println!("Player {} took {}'s {}!", self.current_player.number() ,self.current_player.other(), piece.name());
-        match self.current_player {
-            Player::One => self.p2_pieces.retain(|&x| x != to),
-            Player::Two => self.p1_pieces.retain(|&x| x != to),
-        }
+        self.remove_piece(to);
+        self.set(to, new_piece);
         // display taken pieces?
+    }
+
+    fn remove_piece(&mut self, position: (u8, u8)) {
+        match self.get(position).unwrap().player() {
+            Player::One => self.p1_pieces.retain(|&x| x != position),
+            Player::Two => self.p2_pieces.retain(|&x| x != position),
+        }
     }
 
     pub(crate) fn get(&self, (x, y): (u8, u8)) -> Square {
@@ -460,7 +475,6 @@ impl Game {
                 for friendly_position in pieces.clone() {
                     let friendly = self.get(friendly_position).unwrap();
                         //for every friendly piece, see if it can block the path and get us out of check
-                        // print!("{:?}", friendly.can_intercept_path((l,k), (j,i), king, self));
                     for square in friendly.can_intercept_path(friendly_position, enemy_position, king, self) {
                         if !self.try_move_for_check(friendly_position, square, self.current_player) {
                             return false;
@@ -504,36 +518,6 @@ impl Game {
             break;
         }
         self.set(position, Some(piece));
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn can_castle(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
-        if self.in_check(self.current_player) {
-            return false;
-        }
-        let (x,y) = from;
-        let (new_x, new_y) = to;
-        if y != new_y || x != 4 {
-            return false;
-        }
-        if new_x == 2 {
-            if self.check_horiz(from, (0,y)) {
-                if let Some(piece) = self.get((0,y)) {
-                    if piece.is_type::<Rook>() && piece.player() == self.current_player {
-                        return true;
-                    }
-                }
-            }
-        } else if new_x == 6 {
-            if self.check_horiz(from, (7,y)) {
-                if let Some(piece) = self.get((7,y)) {
-                    if piece.is_type::<Rook>() && piece.player() == self.current_player {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
     }
 
     fn castle(&mut self, king: (u8, u8)) {
@@ -652,11 +636,11 @@ impl Game {
         let is_king = friendly.clone().unwrap().is_type::<King>();
         let old = self.get(to);
         let enemy_pieces = self.get_pieces(player.other()).clone();
+        // assumes that old isn't a friendly piece
         if old.is_some() {
-            self.take(to, friendly.clone());
-        } else {
-            self.set(to, friendly.clone());
+            self.remove_piece(to);
         }
+        self.set(to, friendly.clone());
         self.set(from, None);
         if is_king {
             self.set_king(player, to);
@@ -703,6 +687,31 @@ impl Game {
             Player::One => self.p1_pieces = pieces.to_vec(),
             Player::Two => self.p2_pieces = pieces.to_vec(),
         }
+    }
+
+    fn stalemate(&mut self) -> bool {
+        self.all_possible_moves().is_empty()
+    }
+
+    fn all_possible_moves(&mut self) -> Vec<((u8, u8), (u8, u8))> {
+        let mut all_moves = Vec::new();
+        for position in self.get_pieces(self.current_player).clone() {
+            if let Some(piece) = self.get(position) {
+                let moves = piece.get_legal_moves(position, self);
+                all_moves.extend(moves.iter().map(|x| (position, *x)));
+            }
+        }
+        all_moves
+    }
+
+    fn tick(&mut self) {
+        if self.half_move_clock >= 50 {
+            println!("50 moves without a capture or pawn move, it's a draw!");
+            self.game_over = true;
+            return;
+        }
+        self.half_move_clock += 1;
+        self.full_move_clock += 1;
     }
 }
 
@@ -831,5 +840,25 @@ mod tests {
                 assert!(piece.valid_move(position, (x,y), &mut game) != Move::Invalid);
             }
         }
+    }
+
+    #[test]
+    fn stalemate() {
+        let mut board: Board = vec![vec![None;8];8];
+        board[7][5] = Some(Box::new(King::new(Player::One)));
+        board[4][4] = Some(Box::new(Queen::new(Player::Two)));
+        board[4][3] = Some(Box::new(Bishop::new(Player::Two)));
+        board[2][3] = Some(Box::new(King::new(Player::Two)));
+
+        let mut game = Game::new();
+        game.set_board(board);
+        game.set_pieces(vec![(5,7)], vec![(4,4),(3,4),(3,2)]);
+        game.set_king(Player::One, (5,7));
+        game.set_king(Player::Two, (3,2));
+
+        println!("{game}");
+    
+        assert!(game.stalemate());
+        assert!(!game.checkmate());
     }
 }
