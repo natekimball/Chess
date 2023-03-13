@@ -362,6 +362,9 @@ impl Game {
         io::stdin().read_line(&mut input).unwrap();
         if input.to_ascii_lowercase().trim() == "exit" {
             std::process::exit(0);
+        } else if input.to_ascii_lowercase().trim() == "resign" {
+            println!("Player {} resigned, {} wins!", self.current_player.number(), self.current_player.other());
+            std::process::exit(0);
         }
         let mut input = input.split_whitespace();
         let from = input.next();
