@@ -1,4 +1,5 @@
 extern crate tensorflow;
+extern crate tensorflow;
 mod game;
 mod piece;
 mod king;
@@ -29,6 +30,7 @@ fn launch_game() -> bool {
         // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
         game.turn();
     }
+    
     
     game.play_again()
 }

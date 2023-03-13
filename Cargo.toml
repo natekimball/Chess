@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 colored = "2.0.0"
-tensorflow = { version = "0.19.1", features = ["ndarray"] }
+tensorflow = { version = "0.20.0", features = ["ndarray"] }
 rand = "0.8.5"
 # js-sys = { version = "0.3.50", optional = true }
 # webpack = "0.1.0"
