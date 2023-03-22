@@ -31,16 +31,12 @@ impl Game {
         let mut board: Board = vec![vec![None; 8]; 8];
         board[0] = vec![Some(Box::new(Rook::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Queen::new(Player::Two))), Some(Box::new(King::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Rook::new(Player::Two)))];
         board[1] = vec![Some(Box::new(Pawn::new(Player::Two))); 8];
-        
         board[7] = vec![Some(Box::new(Rook::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Queen::new(Player::One))), Some(Box::new(King::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Rook::new(Player::One)))];
         board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
-
-        let mut board: Board = vec![vec![None; 8]; 8];
-        board[0] = vec![Some(Box::new(Rook::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Queen::new(Player::Two))), Some(Box::new(King::new(Player::Two))), Some(Box::new(Bishop::new(Player::Two))), Some(Box::new(Knight::new(Player::Two))), Some(Box::new(Rook::new(Player::Two)))];
-        board[1] = vec![Some(Box::new(Pawn::new(Player::Two))); 8];
         
-        board[7] = vec![Some(Box::new(Rook::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Queen::new(Player::One))), Some(Box::new(King::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Rook::new(Player::One)))];
-        board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
+        let args: Vec<String> = std::env::args().collect();
+        println!("{:?}", args);
+        // let two_player = args.len() > 1 && args[1] == "--2p";
 
         Game {
             board,
@@ -62,17 +58,82 @@ impl Game {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn set_board(&mut self, board: Board) {
-        self.board = board;
+    fn get_best_move(&mut self) -> ((u8,u8), (u8,u8)) {
+        // let pieces = self.get_pieces(self.current_player);
+        let possible_moves = self.get_possible_moves(self.current_player);
+        if possible_moves.is_empty() {
+            print!("No possible moves for player {}!", self.current_player);
+            self.game_over = true;
+            panic!("stalemate!");
+        }
+        /*  
+        possible_moves.iter().sort(|(from, to)| {
+            let mut game = self.clone();
+            game.move_piece(*from, *to);
+            game.evaluate()
+        });
+
+        possible_moves.reverse();
+        possible_moves.iter().take(10).collect();
+         */
+        let mut best_move = (possible_moves[0].0,possible_moves[0].1[0]);
+        let mut best_score = i8::MIN;
+        for (from, moves) in possible_moves {
+            for to in moves {
+                let mut game = self.clone();
+                game.move_piece(from, to);
+                let score = game.minimax(3, false, i8::MIN, i8::MAX); //double check params
+                if score > best_score {
+                    best_score = score;
+                    best_move = (from, to);
+                }
+            }
+        }
+        best_move
     }
 
-    #[cfg(test)]
-    pub(crate) fn set_pieces(&mut self, p1_pieces: Vec<(u8, u8)>, p2_pieces: Vec<(u8, u8)>) {
-        self.p1_pieces = p1_pieces;
-        self.p2_pieces = p2_pieces;
+    fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: i8, mut beta: i8) -> i8 {
+        if depth == 0 {
+            return self.evaluate();
+        }
+        // can scores be negative or can they be u8s? unsure
+        if maximizing {
+            let mut best = i8::MIN;
+            for &from in self.get_pieces(self.current_player) {
+                // let moves = self.get_moves(piece);
+                let piece = self.get(from).unwrap();
+                for to in piece.get_legal_moves(from, &mut self.clone()) {
+                    let mut game = self.clone();
+                    game.move_piece(from, to);
+                    let score = game.minimax(depth - 1, false, alpha, beta);
+                    best = max(best, score);
+                    alpha = max(alpha, score);
+                    if beta <= alpha {
+                        break;
+                    }
+                }
+            }
+            return best;
+        } else {
+            let mut best = i8::MAX;
+            for &from in self.get_pieces(self.current_player) {
+                let piece = self.get(from).unwrap();
+                for to in piece.get_legal_moves(from, &mut self.clone()) {
+                    let mut game = self.clone();
+                    game.move_piece(from, to);
+                    let score = game.minimax(depth - 1, true, alpha, beta);
+                    best = min(best, score);
+                    beta = min(beta, score);
+                    if beta <= alpha {
+                        break;
+                    }
+                }
+            }
+            return best;
+        }
     }
 
+    
     pub fn turn(&mut self) {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
@@ -132,9 +193,9 @@ impl Game {
                         },
                         Move::Castle => {
                             self.castle(to);
-                            let rook_from = if to.0 == 6 { 7 } else { 0 };
-                            let rook_to = if to.0 == 6 { 5 } else { 3 };
-                            self.move_piece((rook_from, from.1), (rook_to, from.1));
+                            // let rook_from = if to.0 == 6 { 7 } else { 0 };
+                            // let rook_to = if to.0 == 6 { 5 } else { 3 };
+                            // self.update_piece((rook_from, from.1), (rook_to, from.1));
                         },
                         Move::EnPassant(position) => {
                             self.take(position, None);
@@ -153,7 +214,7 @@ impl Game {
                     self.half_move_clock = 0;
                 }
                 valid_move = true;
-                self.move_piece(from, to)
+                // self.update_piece(from, to) moved this into set_moved
             } else {
                 println!("You must move one of your own pieces!");
             }
@@ -168,7 +229,8 @@ impl Game {
         self.current_player = self.current_player.other();
     }
 
-    pub fn make_move(&mut self, from: (u8,u8), to: (u8,u8)) {
+    fn move_piece(&mut self, from: (u8,u8), to: (u8,u8)) {
+        //TODO: check
         let piece = self.get(from);
         let conquered = self.get(to);
         let move_status = piece.clone().unwrap().valid_move(from, to, self);
@@ -178,6 +240,7 @@ impl Game {
         if piece.clone().unwrap().player() != self.current_player {
             panic!("You must move one of your own pieces!");
         }
+        self.tick(); //should this be removed?
         if let Some(conquered) = conquered.clone() {
             if conquered.player() == self.current_player {
                 panic!("You can't take your own piece!");
@@ -194,69 +257,89 @@ impl Game {
                 },
                 Move::Castle => {
                     self.castle(to);
-                    let rook_from = if to.0 == 6 { 7 } else { 0 };
-                    let rook_to = if to.0 == 6 { 5 } else { 3 };
-                    self.move_piece((rook_from, from.1), (rook_to, from.1));
+                    // let rook_from = if to.0 == 6 { 7 } else { 0 };
+                    // let rook_to = if to.0 == 6 { 5 } else { 3 };
+                    // self.update_piece((rook_from, from.1), (rook_to, from.1));
+                    // can i move all this into castle
                 },
                 Move::EnPassant(position) => {
                     self.take(position, None);
                 },
                 Move::Invalid => unreachable!()
             }
+            self.set_moved(piece, from, to)
+            // self.update_piece(from, to);
         }
-        self.move_piece(from, to);
         self.current_player = self.current_player.other();
     }
 
-    pub fn get_algorithm_move(&mut self) -> ((u8,u8), (u8,u8)) {
-        // let pieces = self.get_pieces(self.current_player);
-        let possible_moves = self.get_possible_moves(self.current_player);
-        if possible_moves.is_empty() {
-            print!("No possible moves for player {}!", self.current_player);
-            //check for check, if not stalemate
-            self.game_over = true;
-            panic!("stalemate!");
+    fn evaluate(&self) -> i8 {
+        // TODO: convert to (13,8,8) then perform regression
+        0
+    }
+
+    pub fn algorithm_move(&mut self) {
+        let (from, to) = self.get_best_move();
+        // self.tick();
+        self.move_piece(from, to);
+    }
+
+    fn checkmate(&mut self) -> bool {
+        if !self.in_check(self.current_player) {
+            return false;
         }
-        let mut best_move = (possible_moves[0].0,possible_moves[0].1[0]);
-        let mut best_score = -1000000;
-        for (from, moves) in possible_moves {
-            for to in moves {
-                let mut board = self.clone();
-                board.make_move(from, to);
-                let score = board.get_score();
-                if score > best_score {
-                    best_score = score;
-                    best_move = (from, to);
+        // for every enemy that can attack king {
+        //         for every square in path from enemy to king {
+        //                 for every friendly piece {
+        //                         if friendly piece can move to square {
+        //                                 return false;
+        //                         }
+        //                 }
+        //         }
+        // }
+        let king = self.get_king(self.current_player);
+        let pieces = self.get_pieces(self.current_player).clone();
+        let enemy_pieces = self.get_pieces(self.current_player.other()).clone();
+        for enemy_position in enemy_pieces {
+            let enemy = self.get(enemy_position).unwrap();
+            if enemy.valid_move(enemy_position, king, self) != Move::Invalid {
+                //if it puts the king in check
+                for friendly_position in pieces.clone() {
+                    let friendly = self.get(friendly_position).unwrap();
+                        //for every friendly piece, see if it can block the path and get us out of check
+                    for square in friendly.can_intercept_path(friendly_position, enemy_position, king, self) {
+                        if !self.try_move_for_check(friendly_position, square, self.current_player) {
+                            return false;
+                        }
+                    }
                 }
             }
         }
-        best_move
-    }
-
-    pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8,u8),Vec<(u8,u8)>)> {
-        let mut moves = Vec::new();
-        for position in self.get_pieces(player).clone() {
-            let piece = self.get(position).expect("Piece not found!");
-            let piece_moves = piece.get_legal_moves(position, self);
-            if !moves.is_empty() {
-                moves.push((position, piece_moves));
+        let (x,y) = king;
+        for (i, j) in [(0,1), (1,0), (0,-1), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)] {
+            let (new_x, new_y) = (x as i8 + i, y as i8 + j);
+            if new_x < 0 || new_x >= 8 || new_y < 0 || new_y >= 8 {
+                continue;
+            }
+            let new_pos = (new_x as u8, new_y as u8);
+            if !self.is_current_player(new_pos) {
+                if !self.try_move_for_check(king, new_pos, self.current_player) {
+                    return false;
+                }
             }
         }
-        moves
+        true
+    }
+    
+    #[cfg(test)]
+    pub(crate) fn set_board(&mut self, board: Board) {
+        self.board = board;
     }
 
-    pub fn get_possible_boards(&mut self, player: Player) -> Vec<Game> {
-        let mut boards = Vec::new();
-        for position in self.get_pieces(player).clone() {
-            let piece = self.get(position).expect("Piece not found!");
-            let piece_moves = piece.get_legal_moves(position, self);
-            for to in piece_moves {
-                let mut board = self.clone();
-                board.make_move(position, to);
-                boards.push(board);
-            }
-        }
-        boards
+    #[cfg(test)]
+    pub(crate) fn set_pieces(&mut self, p1_pieces: Vec<(u8, u8)>, p2_pieces: Vec<(u8, u8)>) {
+        self.p1_pieces = p1_pieces;
+        self.p2_pieces = p2_pieces;
     }
 
     pub fn is_over(&mut self) -> bool {
@@ -274,18 +357,18 @@ impl Game {
         input.trim().to_ascii_lowercase() == "y"
     }
 
-    fn get_score(&self) -> i32 {
-        let mut score = 0;
-        for piece in self.p1_pieces.iter() {
-            let piece = self.get(*piece).unwrap();
-            score += piece.value();
-        }
-        for piece in self.p2_pieces.iter() {
-            let piece = self.get(*piece).unwrap();
-            score -= piece.value();
-        }
-        score
-    }
+    // fn get_score(&self) -> i32 {
+    //     let mut score = 0;
+    //     for piece in self.p1_pieces.iter() {
+    //         let piece = self.get(*piece).unwrap();
+    //         score += piece.value();
+    //     }
+    //     for piece in self.p2_pieces.iter() {
+    //         let piece = self.get(*piece).unwrap();
+    //         score -= piece.value();
+    //     }
+    //     score
+    // }
 
     fn is_current_player(&self, from: (u8, u8)) -> bool {
         let spot = self.get(from);
@@ -432,82 +515,6 @@ impl Game {
         (from, to)
     }
 
-    fn checkmate(&mut self) -> bool {
-        if !self.in_check(self.current_player) {
-            return false;
-        }
-        // for every enemy that can attack king {
-            //     for every square in path from enemy to king {
-                //         for every friendly piece {
-                    //             if friendly piece can move to square {
-                        //                 return false;
-                        //             }
-                        //         }
-                        //     }
-                        // }
-        let king = self.get_king(self.current_player);
-        // for i in 0..8 {
-        //     for j in 0..8 {
-        //         if let Some(enemy) = self.get((j,i)) {
-        //             if enemy.player() != self.current_player {
-        //                 //for every enemy piece
-        //                 if enemy.valid_move((j as u8,i as u8), king, self) != Move::Invalid {
-        //                     //if it puts the king in check
-        //                     for k in 0..8 {
-        //                         for l in 0..8 {
-        //                             if let Some(friendly) = self.get((l,k)) {
-        //                                 if friendly.player() == self.current_player {
-        //                                     //for every friendly piece, see if it can block the path and get us out of check
-        //                                     // print!("{:?}", friendly.can_intercept_path((l,k), (j,i), king, self));
-        //                                     for square in friendly.can_intercept_path((l,k), (j,i), king, self) {
-        //                                         if !self.try_move_for_check((l,k), square, self.current_player) {
-        //                                             return false;
-        //                                         }
-        //                                     }
-        //                                 }
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-        let (pieces, enemy_pieces) = match self.current_player {
-            Player::One => (self.p1_pieces.clone(), self.p2_pieces.clone()),
-            Player::Two => (self.p2_pieces.clone(), self.p1_pieces.clone()),
-        };
-        for enemy_position in enemy_pieces {
-            let enemy = self.get(enemy_position).unwrap();
-            if enemy.valid_move(enemy_position, king, self) != Move::Invalid {
-                //if it puts the king in check
-                for friendly_position in pieces.clone() {
-                    let friendly = self.get(friendly_position).unwrap();
-                        //for every friendly piece, see if it can block the path and get us out of check
-                    for square in friendly.can_intercept_path(friendly_position, enemy_position, king, self) {
-                        if !self.try_move_for_check(friendly_position, square, self.current_player) {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-        let (x,y) = king;
-        for (i, j) in [(0,1), (1,0), (0,-1), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)] {
-            let (new_x, new_y) = (x as i8 + i, y as i8 + j);
-            if new_x < 0 || new_x >= 8 || new_y < 0 || new_y >= 8 {
-                continue;
-            }
-            let new_pos = (new_x as u8, new_y as u8);
-            if !self.is_current_player(new_pos) {
-                if !self.try_move_for_check(king, new_pos, self.current_player) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
     fn promote_piece(&mut self, position: (u8, u8)) {
         println!("Pawn promotion! Enter a piece to promote to: (q, r, b, k)");
         let mut input = String::new();
@@ -529,14 +536,15 @@ impl Game {
         self.set(position, Some(piece));
     }
 
-    fn castle(&mut self, king: (u8, u8)) {
-        let (rook_from, rook_to) = match king.0 {
-            6 => ((7, king.1), (5, king.1)),
-            2 => ((0, king.1), (3, king.1)),
+    fn castle(&mut self, king_to: (u8, u8)) {
+        let (rook_from, rook_to) = match king_to.0 {
+            6 => ((7, king_to.1), (5, king_to.1)),
+            2 => ((0, king_to.1), (3, king_to.1)),
             _ => unreachable!()
         };
         self.set(rook_to, self.get(rook_from));
         self.set(rook_from, None);
+        self.update_piece(rook_from, rook_to);
     }
 
     fn set_last_double(&mut self, position: Option<(u8, u8)>) {
@@ -590,6 +598,7 @@ impl Game {
                 }
             }
         }
+        self.update_piece(from, to)
     }
 
     pub(crate) fn has_king_moved(&self, player: Player) -> bool {
@@ -678,7 +687,7 @@ impl Game {
         }
     }
 
-    fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) { 
+    fn update_piece(&mut self, from: (u8, u8), to: (u8, u8)) { 
         match self.current_player {
             Player::One => {
                 self.p1_pieces.retain(|x| *x != from);
@@ -699,18 +708,20 @@ impl Game {
     }
 
     fn stalemate(&mut self) -> bool {
-        self.all_possible_moves().is_empty()
+        self.get_possible_moves(self.current_player).is_empty()
     }
-
-    fn all_possible_moves(&mut self) -> Vec<((u8, u8), (u8, u8))> {
-        let mut all_moves = Vec::new();
-        for position in self.get_pieces(self.current_player).clone() {
-            if let Some(piece) = self.get(position) {
-                let moves = piece.get_legal_moves(position, self);
-                all_moves.extend(moves.iter().map(|x| (position, *x)));
+    
+    pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8,u8),Vec<(u8,u8)>)> {
+        let mut moves = Vec::new();
+        for position in self.get_pieces(player).clone() {
+            let piece = self.get(position).expect("Piece not found!");
+            let piece_moves = piece.get_legal_moves(position, self);
+            if !piece_moves.is_empty() {
+                moves.push((position, piece_moves));
             }
+            // moves.extend(moves.iter().map(|x| (position, *x))); -> Vec<((u8,u8),(u8,u8))>>
         }
-        all_moves
+        moves
     }
 
     fn tick(&mut self) {
