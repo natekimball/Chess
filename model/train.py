@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow import load_model
 
 
-data = pd.read_csv('data/chessData.csv', nrows=99999) #skiprows=79999, nrows=1079999
+data = pd.read_csv('data/chessData.csv', skiprows=79999, nrows=99999) #skiprows=79999
 data.dropna(inplace=True)
 
 print(data.head())
@@ -115,59 +115,61 @@ y = data['Evaluation'].values
 X_train, X_test, y_train, y_test = [i.tolist() for i in train_test_split(X, y, test_size=0.2, random_state=42)]
 print(np.array(X_train).shape)
 
-model = Sequential([
-    Conv2D(
-        filters=32, kernel_size=3, padding='same', activation='relu', input_shape=(13, 8, 8)),
-    BatchNormalization(),
-    Conv2D(
-        filters=32, kernel_size=3, padding='same', activation='relu'),
-    MaxPooling2D(pool_size=1),
-    BatchNormalization(),
-    Conv2D(
-        filters=64, kernel_size=3, padding='same', activation='relu'),
-    BatchNormalization(),
-    Conv2D(
-        filters=64, kernel_size=3, padding='same', activation='relu'),
-    MaxPooling2D(pool_size=1),
-    BatchNormalization(),
-    Conv2D(
-        filters=128, kernel_size=3, padding='same', activation='relu'),
-    BatchNormalization(),
-    Conv2D(
-        filters=128, kernel_size=3, padding='same', activation='relu'),
-    MaxPooling2D(pool_size=1),
-    BatchNormalization(),
-    Conv2D(
-        filters=256, kernel_size=3, padding='same', activation='relu'),
-    BatchNormalization(),
-    Conv2D(
-        filters=256, kernel_size=3, padding='same', activation='relu'),
-    MaxPooling2D(pool_size=1),
-    BatchNormalization(),
-    Conv2D(
-        filters=512, kernel_size=3, padding='same', activation='relu'),
-    BatchNormalization(),
-    Conv2D(
-        filters=512, kernel_size=3, padding='same', activation='relu'),
-    MaxPooling2D(pool_size=2),
-    BatchNormalization(),
-    Conv2D(
-        filters=1024, kernel_size=3, padding='same', activation='relu'),
-    BatchNormalization(),
-    Conv2D(
-        filters=1024, kernel_size=3, padding='same', activation='relu'),
-    MaxPooling2D(pool_size=2),
-    BatchNormalization(),
-    Flatten(),
-    Dense(units=4096, activation='relu'),
-    Dropout(0.25),
-    Dense(units=4096, activation='relu'),
-    Dropout(0.25),
-    Dense(units=2048, activation='relu'),
-    Dropout(0.25),
-    Dense(units=1024, activation='relu'),
-    Dense(1, activation='tanh')
-])
+# model = Sequential([
+#     Conv2D(
+#         filters=32, kernel_size=3, padding='same', activation='relu', input_shape=(13, 8, 8)),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=32, kernel_size=3, padding='same', activation='relu'),
+#     MaxPooling2D(pool_size=1),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=64, kernel_size=3, padding='same', activation='relu'),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=64, kernel_size=3, padding='same', activation='relu'),
+#     MaxPooling2D(pool_size=1),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=128, kernel_size=3, padding='same', activation='relu'),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=128, kernel_size=3, padding='same', activation='relu'),
+#     MaxPooling2D(pool_size=1),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=256, kernel_size=3, padding='same', activation='relu'),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=256, kernel_size=3, padding='same', activation='relu'),
+#     MaxPooling2D(pool_size=1),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=512, kernel_size=3, padding='same', activation='relu'),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=512, kernel_size=3, padding='same', activation='relu'),
+#     MaxPooling2D(pool_size=2),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=1024, kernel_size=3, padding='same', activation='relu'),
+#     BatchNormalization(),
+#     Conv2D(
+#         filters=1024, kernel_size=3, padding='same', activation='relu'),
+#     MaxPooling2D(pool_size=2),
+#     BatchNormalization(),
+#     Flatten(),
+#     Dense(units=4096, activation='relu'),
+#     Dropout(0.25),
+#     Dense(units=4096, activation='relu'),
+#     Dropout(0.25),
+#     Dense(units=2048, activation='relu'),
+#     Dropout(0.25),
+#     Dense(units=1024, activation='relu'),
+#     Dense(1, activation='tanh')
+# ])
+
+model = load_model('model.h5')
 
 # opt = keras.optimizers.Adam(learning_rate=3e-4)
 model.compile(optimizer='adam', loss='mse', metrics=['mae'])
