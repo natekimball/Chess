@@ -614,11 +614,7 @@ impl Game {
         if input.to_ascii_lowercase().trim() == "exit" {
             std::process::exit(0);
         } else if input.to_ascii_lowercase().trim() == "resign" {
-            println!(
-                "Player {} resigned, {} wins!",
-                self.current_player.number(),
-                self.current_player.other()
-            );
+            println!("Player {} resigned, {} wins!", self.current_player.number(), self.current_player.other());
             std::process::exit(0);
         }
         let mut input = input.split_whitespace();
@@ -789,11 +785,7 @@ impl Game {
         if let Some(piece) = self.get(from) {
             let moves = piece.get_legal_moves(from, self);
             if moves.len() == 0 {
-                println!(
-                    "Player {}'s {} has no legal moves!",
-                    piece.player().number(),
-                    piece.name()
-                );
+                println!("Player {}'s {} has no legal moves!", piece.player().number(), piece.name());
                 return;
             }
             println!(
@@ -947,7 +939,6 @@ impl Display for Game {
 }
 
 fn coord_to_pos(coord: (u8,u8)) -> String {
-    // String::from((coord.0 + 'a' as u8) as char) + &String::from((coord.1 + '8' as u8) as char)
     format!("{}{}", (coord.0 + 'a' as u8) as char, (coord.1 + '8' as u8) as char)
 }
 
