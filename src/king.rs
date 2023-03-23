@@ -68,7 +68,7 @@ impl Piece for King {
 }
 
 impl King {
-    fn can_castle_left(&self, position: (u8,u8), game: &mut Game) -> bool {
+    pub(crate) fn can_castle_left(&self, position: (u8,u8), game: &mut Game) -> bool {
         let y = match self.player {
             Player::One => 7,
             Player::Two => 0
@@ -88,7 +88,7 @@ impl King {
         false
     }
 
-    fn can_castle_right(&self , position: (u8,u8), game: &mut Game) -> bool {
+    pub(crate) fn can_castle_right(&self , position: (u8,u8), game: &mut Game) -> bool {
         let y = match self.player {
             Player::One => 7,
             Player::Two => 0
