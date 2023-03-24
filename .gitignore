@@ -3,3 +3,4 @@ model/data
 ai-notes
 *.out
 *.err
+model.h5

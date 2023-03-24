@@ -80,6 +80,5 @@ pub enum Move {
     Double((u8, u8)),
     Castle,
     EnPassant((u8, u8)),
-    Invalid,
-    // Invalid(friendly: bool)?
+    Invalid
 }

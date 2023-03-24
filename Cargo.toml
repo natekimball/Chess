@@ -11,6 +11,8 @@ edition = "2021"
 colored = "2.0.0"
 tensorflow = { version = "0.20.0", features = ["ndarray"] }
 rand = "0.8.5"
+tract-tensorflow = "0.19.7"
+ndarray = "0.15.6"
 # js-sys = { version = "0.3.50", optional = true }
 # webpack = "0.1.0"
 # wasm-bindgen = "0.2.83"

@@ -7,7 +7,7 @@ use crate::{
     player::Player,
     queen::Queen,
     rook::Rook,
-    // model::Model,
+    model::Model,
 };
 use colored::Colorize;
 use std::{
@@ -39,7 +39,7 @@ pub struct Game {
     p2_taken: [u8; 5],
     half_move_clock: u8,
     full_move_clock: u8,
-    // model: Option<Model>,
+    model: Option<Model>,
 }
 
 impl Game {
@@ -50,12 +50,9 @@ impl Game {
         board[7] = vec![Some(Box::new(Rook::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Queen::new(Player::One))), Some(Box::new(King::new(Player::One))), Some(Box::new(Bishop::new(Player::One))), Some(Box::new(Knight::new(Player::One))), Some(Box::new(Rook::new(Player::One)))];
         board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
 
-        // let args: Vec<String> = std::env::args().collect();
-        // let two_player = args.contains(&String::from("--2p"));
-        // let model = None;
-        // if !two_player {
-        //     let model = Model::new();
-        // }
+        let args: Vec<String> = std::env::args().collect();
+        let two_player = args.contains(&String::from("--2p"));
+        let model = if two_player { None } else { Some(Model::new()) };
 
         Game {
             board,
@@ -76,6 +73,7 @@ impl Game {
             p2_taken: [0; 5],
             half_move_clock: 0,
             full_move_clock: 1,
+            model
         }
     }
 
@@ -97,12 +95,12 @@ impl Game {
         possible_moves.iter().take(10).collect();
          */
         let mut best_move = (possible_moves[0].0, possible_moves[0].1[0]);
-        let mut best_score = i8::MIN;
+        let mut best_score = f32::MIN;
         for (from, moves) in possible_moves {
             for to in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                let score = game.minimax(3, false, i8::MIN, i8::MAX);
+                let score = game.minimax(3, false, f32::MIN, f32::MAX);
                 if score > best_score {
                     best_score = score;
                     best_move = (from, to);
@@ -112,20 +110,20 @@ impl Game {
         best_move
     }
 
-    fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: i8, mut beta: i8) -> i8 {
+    fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
         if depth == 0 {
             return self.evaluate();
         }
         if maximizing {
-            let mut best = i8::MIN;
+            let mut best = f32::MIN;
             for &from in self.get_pieces(self.current_player) {
                 let piece = self.get(from).unwrap();
                 for to in piece.get_legal_moves(from, &mut self.clone()) {
                     let mut game = self.clone();
                     game.move_piece(from, to);
                     let score = game.minimax(depth - 1, false, alpha, beta);
-                    best = max(best, score);
-                    alpha = max(alpha, score);
+                    best = f32::max(best, score);
+                    alpha = f32::max(alpha, score);
                     if beta <= alpha {
                         break;
                     }
@@ -133,15 +131,15 @@ impl Game {
             }
             return best;
         } else {
-            let mut best = i8::MAX;
+            let mut best = f32::MAX;
             for &from in self.get_pieces(self.current_player) {
                 let piece = self.get(from).unwrap();
                 for to in piece.get_legal_moves(from, &mut self.clone()) {
                     let mut game = self.clone();
                     game.move_piece(from, to);
                     let score = game.minimax(depth - 1, true, alpha, beta);
-                    best = min(best, score);
-                    beta = min(beta, score);
+                    best = f32::min(best, score);
+                    beta = f32::min(beta, score);
                     if beta <= alpha {
                         break;
                     }
@@ -152,11 +150,12 @@ impl Game {
     }
 
     pub fn turn(&mut self) {
-        // if self.current_player == Player::Two && self.model.is_some() {
-            // }
-            println!("{}", self);
-            println!("It's {}'s turn.", self.current_player);
-            if self.stalemate() {
+        if self.current_player == Player::Two && self.model.is_some() {
+            return self.algorithm_move();
+        }
+        println!("{}", self);
+        println!("It's {}'s turn.", self.current_player);
+        if self.stalemate() {
                 println!("Player {} is in stalemate!", self.current_player.number());
             self.game_over = true;
             return;
@@ -286,7 +285,7 @@ impl Game {
         self.current_player = self.current_player.other();
     }
     
-    fn evaluate(&mut self) -> i8 {
+    fn evaluate(&mut self) -> f32 {
         let mut data = [[[0; 8]; 8]; 13];
         for &position in self.get_pieces(Player::One) {
             let piece = self.get(position).unwrap();
@@ -365,9 +364,8 @@ impl Game {
                 c -= 1;
             }
         }
-        // let mut mat = Array3::from_shape_vec((13, 8, 8), data.iter().flatten().flatten().flatten().map(|&x| x as f32).collect()).unwrap();
-        0
-        // TODO: model.run_regression(data)
+        println!("{:?}", data);
+        self.model.as_ref().unwrap().run_inference(data).unwrap()
     }
 
     pub fn algorithm_move(&mut self) {
@@ -435,6 +433,11 @@ impl Game {
     pub(crate) fn set_pieces(&mut self, p1_pieces: Vec<(u8, u8)>, p2_pieces: Vec<(u8, u8)>) {
         self.p1_pieces = p1_pieces;
         self.p2_pieces = p2_pieces;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_model(&mut self, model: Option<Model>) {
+        self.model = model;
     }
 
     pub fn is_over(&mut self) -> bool {
@@ -957,6 +960,7 @@ mod tests {
         game.set_board(board);
         game.set_pieces(vec![(0, 0)], vec![(1, 0), (0, 1)]);
         game.set_king(Player::One, (0, 0));
+        game.set_model(None);
 
         assert!(game.checkmate());
     }
@@ -973,6 +977,7 @@ mod tests {
         game.set_board(board);
         game.set_pieces(vec![(0, 0)], vec![(1, 0), (0, 1), (2, 0)]);
         game.set_king(Player::One, (0, 0));
+        game.set_model(None);
 
         print!("{game}");
 
@@ -990,6 +995,7 @@ mod tests {
         game.set_board(board);
         game.set_pieces(vec![(0, 0)], vec![(1, 0), (0, 1)]);
         game.set_king(Player::One, (0, 0));
+        game.set_model(None);
 
         print!("{game}");
 
@@ -1007,6 +1013,7 @@ mod tests {
         game.set_board(board);
         game.set_pieces(vec![(0, 0), (1, 0)], vec![(0, 2)]);
         game.set_king(Player::One, (0, 0));
+        game.set_model(None);
 
         print!("{game}");
 
@@ -1025,6 +1032,7 @@ mod tests {
         game.set_board(board);
         game.set_pieces(vec![(0, 0), (1, 0), (1, 1)], vec![(0, 3)]);
         game.set_king(Player::One, (0, 0));
+        game.set_model(None);
 
         assert!(game.checkmate());
     }
@@ -1032,6 +1040,8 @@ mod tests {
     #[test]
     fn checking_all_legal_moves_are_valid() {
         let mut game = Game::new();
+        game.set_model(None);
+
         for position in game.p1_pieces.clone() {
             let piece = game.get(position).unwrap();
             for (x, y) in piece.get_legal_moves(position, &mut game) {
@@ -1053,6 +1063,7 @@ mod tests {
         game.set_pieces(vec![(5, 7)], vec![(4, 4), (3, 4), (3, 2)]);
         game.set_king(Player::One, (5, 7));
         game.set_king(Player::Two, (3, 2));
+        game.set_model(None);
 
         println!("{game}");
 
