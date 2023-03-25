@@ -75,7 +75,7 @@ pub struct Model {
 impl Model {
 
     pub fn new() -> Self {
-        let model = tract_tensorflow::tensorflow().model_for_path(Path::new("model/saved_model/saved_model.pb")).unwrap();
+        let model = tract_tensorflow::tensorflow().model_for_path(Path::new("model/saved_model.pb")).unwrap();
         let model = model.with_input_fact(0, InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 13, 8, 8))).unwrap();
         let model = model.into_optimized().unwrap();
         let plan = SimplePlan::new(model).unwrap();
