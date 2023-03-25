@@ -2,3 +2,6 @@ scikit-learn
 tensorflow
 pandas
 numpy
+torch
+onnx
+tf2onnx

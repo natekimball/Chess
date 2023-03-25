@@ -3,4 +3,6 @@ model/data
 ai-notes
 *.out
 *.err
-model.h5
+*.h5
+*.pb
+saved_model
