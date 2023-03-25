@@ -1,9 +1,74 @@
+use ndarray::prelude::*;
+use onnxruntime::{environment::Environment, tensor::OrtOwnedTensor};
 
-use std::path::Path;
-// use tract_ndarray::{Ix3, Axis};
-use tract_ndarray::Axis;
-use tract_tensorflow::prelude::*;
-use ndarray::Array;
+#[derive(Clone)]
+pub struct Model {
+    session: onnxruntime::InferenceSession
+}
+
+impl Model {
+
+    pub fn new() -> Self {
+        
+        let model_path = "model.onnx";
+        let input_shape = [1, 13, 8, 8];
+
+        // Initialize the ONNX Runtime environment
+        
+    // Initialize the ONNX Runtime environment
+        let environment = Environment::builder()
+            .with_name("onnx_environment")
+            .build()
+            .unwrap();
+
+        // Load the ONNX model
+        let session = environment
+            .new_session_builder()
+            .unwrap()
+            .with_model_from_file(model_path)
+            .unwrap();
+
+        Self {
+            session
+        }
+    }
+
+    pub fn run_inference(&self, input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+
+        // Create a dummy input tensor with the specified shape
+        // let input_tensor = ndarray::Array::random(input_shape, ndarray_rand::RandomExt::standard_normal);
+        let input_tensor = Array::from(input_data);
+
+        // Create input name and value
+        let input_name = session.input_names()[0].clone();
+        let input_value = input_tensor.into_dyn();
+        
+        // Run inference
+        let outputs: Vec<OrtOwnedTensor<f32, ndarray::Dim<ndarray::IxDynImpl>>> = self.session
+            .run(inputs)
+            .unwrap();
+
+        // Print the output tensor
+        for (i, output) in outputs.iter().enumerate() {
+            println!("Output {}: {:?}", i, output);
+        }
+        // outputs[0].as_slice().unwrap()[0].into()
+        Ok(outputs[0])
+    }
+}
+
+
+// tract simply doesn't work with CNNs, and tensorflow doesn't implement clone
+// trying onxx, if not, will try pytorch
+
+
+
+
+// use std::path::Path;
+// // use tract_ndarray::{Ix3, Axis};
+// use tract_ndarray::Axis;
+// use tract_tensorflow::prelude::*;
+// use ndarray::Array;
 // use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor, SignatureDef, TensorInfo, Operation};
 
 // #[derive(Clone)]
@@ -67,49 +132,6 @@ use ndarray::Array;
 //         Ok(args.fetch::<f32>(out).unwrap()[0])
 //     }
 // }
-#[derive(Clone)]
-pub struct Model {
-    plan: SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>
-}
-
-impl Model {
-
-    pub fn new() -> Self {
-        let model = tract_tensorflow::tensorflow().model_for_path(Path::new("model/saved_model.pb")).unwrap();
-        let model = model.with_input_fact(0, InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 13, 8, 8))).unwrap();
-        let model = model.into_optimized().unwrap();
-        let plan = SimplePlan::new(model).unwrap();
-        Self {
-            plan
-        }
-    }
-
-    pub fn run_inference(&self, input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
-        // Array<f32, Ix3>
-        // Load the model 
-        // let model = tract_tensorflow::tensorflow().model_for_path(Path::new("model/model.pb"))?;
-        
-        // // Specify input facts and input data
-        // let model = model.with_input_fact(0, InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 13, 8, 8)))?;
-        
-        let input_data = Array::from_shape_vec((13, 8, 8), input_data.into_iter().flatten().flatten().collect()).unwrap();
-        
-        let input = Tensor::from(input_data.insert_axis(Axis(0)));
-        
-        // // Optimize the model and get an execution plan
-        // let model = model.into_optimized()?;
-        // let plan = SimplePlan::new(&model)?;
-        
-        // Run inference
-        let result = self.plan.run(tvec![input.into()])?;
-        
-        // Convert the output tensor to ndarray
-        let output = *result[0].to_scalar::<f32>()?;
-        // let output = result[0].to_array_view::<f32>()?.into_dimensionality::<Ix2>()?.to_owned();
-        
-        Ok(output)
-    }
-}
 
 // use tch::{nn, nn::Module, nn::OptimizerConfig, Device, Tensor};
 

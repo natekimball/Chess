@@ -9,11 +9,12 @@ edition = "2021"
 
 [dependencies]
 colored = "2.0.0"
-tensorflow = { version = "0.20.0" } # features = ["ndarray"]
+# tensorflow = { version = "0.20.0" } # features = ["ndarray"]
 rand = "0.8.5"
 # tract-tensorflow = "0.19.7"
 onnxruntime = "0.0.14"
 ndarray = "0.15.1"
+ndarray-rand = "0.14.0"
 # js-sys = { version = "0.3.50", optional = true }
 # webpack = "0.1.0"
 # wasm-bindgen = "0.2.83"
