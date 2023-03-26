@@ -1,137 +1,94 @@
-use ndarray::prelude::*;
-use onnxruntime::{environment::Environment, tensor::OrtOwnedTensor};
+// tract simply doesn't work with CNNs
+// none of tensorflow, onnx, or pytorch can derive clone
+// if pytorch doesn't work use tensorflow or onnx
+// maybe use tensorflow with arc?
+// maybe use tensorflow or pytorch and define model in main (or other creational pattern) and pass it into game.rs
 
-#[derive(Clone)]
-pub struct Model {
-    session: onnxruntime::InferenceSession
-}
+// use ndarray::Array4;
+use tch::Tensor;
+use tch::CModule;
+
+// #[derive(Clone)]
+pub struct Model;
 
 impl Model {
+    pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+        // Create a dummy input tensor with the shape [1, 13, 8, 8]
+        // let input_data: Vec<f32> = vec![0.0; 1 * 13 * 8 * 8];
+        let model = CModule::load("model/model.pt").unwrap();
 
-    pub fn new() -> Self {
-        
-        let model_path = "model.onnx";
-        let input_shape = [1, 13, 8, 8];
-
-        // Initialize the ONNX Runtime environment
-        
-    // Initialize the ONNX Runtime environment
-        let environment = Environment::builder()
-            .with_name("onnx_environment")
-            .build()
-            .unwrap();
-
-        // Load the ONNX model
-        let session = environment
-            .new_session_builder()
-            .unwrap()
-            .with_model_from_file(model_path)
-            .unwrap();
-
-        Self {
-            session
-        }
-    }
-
-    pub fn run_inference(&self, input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
-
-        // Create a dummy input tensor with the specified shape
-        // let input_tensor = ndarray::Array::random(input_shape, ndarray_rand::RandomExt::standard_normal);
-        let input_tensor = Array::from(input_data);
-
-        // Create input name and value
-        let input_name = session.input_names()[0].clone();
-        let input_value = input_tensor.into_dyn();
-        
-        // Run inference
-        let outputs: Vec<OrtOwnedTensor<f32, ndarray::Dim<ndarray::IxDynImpl>>> = self.session
-            .run(inputs)
-            .unwrap();
-
-        // Print the output tensor
-        for (i, output) in outputs.iter().enumerate() {
-            println!("Output {}: {:?}", i, output);
-        }
-        // outputs[0].as_slice().unwrap()[0].into()
-        Ok(outputs[0])
+        let input_data = input_data.into_iter().flatten().flatten().collect::<Vec<u8>>();
+        // let input_tensor = Tensor::of_slice(&input_data);
+        let input_tensor = Tensor::of_slice(&input_data).reshape(&[1, 13, 8, 8]);
+    
+        // Run the inference
+        let output = model.forward_ts(&[input_tensor]).unwrap();
+    
+        // Convert the output tensor to ndarray
+        // let output_shape = [1;4];
+        let output_data: Vec<f32> = output.into();
+        // let output_array = Array4::from_shape_vec(output_shape, output_data).unwrap();
+    
+        // // Print the result
+        // println!("Inference result: {:?}", output_array);
+        println!("Inference result: {:?}", output_data);
+        Ok(output_data[0])
     }
 }
 
 
-// tract simply doesn't work with CNNs, and tensorflow doesn't implement clone
-// trying onxx, if not, will try pytorch
 
 
-
-
-// use std::path::Path;
-// // use tract_ndarray::{Ix3, Axis};
-// use tract_ndarray::Axis;
-// use tract_tensorflow::prelude::*;
-// use ndarray::Array;
-// use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor, SignatureDef, TensorInfo, Operation};
+// use ndarray::prelude::*;
+// use onnxruntime::{environment::Environment, tensor::OrtOwnedTensor};
 
 // #[derive(Clone)]
 // pub struct Model;
+
 // impl Model {
-    
 //     pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
-//         let pred_input_parameter_name = "inputs";
-//         //Names of output nodes of the graph, retrieved with the saved_model_cli command
-//         let pred_output_parameter_name = "output_0";
 
-//         let save_dir = "model/saved_model";
+//         let model_path = "model.onnx";
+//         let input_shape = [1, 13, 8, 8];
 
-//         //Create a graph
-//         let mut graph = Graph::new();
-
-//         //Load save model as graph
-//         let bundle = SavedModelBundle::load(
-//             &SessionOptions::new(), &["serve"], &mut graph, save_dir
-//         ).expect("Can't load saved model");
-
-
-//         //Alternative to saved_model_cli. This will list all signatures in the console when run
-//         // let sigs = bundle.meta_graph_def().signatures();
-//         // println!("{:?}", sigs);
-
-//         //Initiate a session
-//         let session = &bundle.session;
+//         // Initialize the ONNX Runtime environment
         
-//         //Retrieve the pred functions signature
-//         let signature_train = bundle.meta_graph_def().get_signature("pred").unwrap();
+//     // Initialize the ONNX Runtime environment
+//         let environment = Environment::builder()
+//             .with_name("onnx_environment")
+//             .build()
+//             .unwrap();
 
-//         //
-//         let input_info_pred = signature_train.get_input(pred_input_parameter_name).unwrap();
+//         // Load the ONNX model
+//         let session = environment
+//             .new_session_builder()
+//             .unwrap()
+//             .with_model_from_file(model_path)
+//             .unwrap();
+//         // Create a dummy input tensor with the specified shape
+//         // let input_tensor = ndarray::Array::random(input_shape, ndarray_rand::RandomExt::standard_normal);
+//         let input_tensor = Array::from(input_data.into_iter().flatten().flatten().collect::<Vec<u8>>());
 
-//         //
-//         let output_info_pred = signature_train.get_output(pred_output_parameter_name).unwrap();
+//         // Create input name and value
+//         // let input_name = self.session.input_names()[0].clone();
+//         let input_value = input_tensor.into_dyn();
+        
+//         // Run inference
+//         let outputs: Vec<OrtOwnedTensor<f32, ndarray::Dim<ndarray::IxDynImpl>>> = session
+//             .run(vec!(input_value))
+//             .unwrap();
 
-//         //
-//         let input_op_pred = graph.operation_by_name_required(&input_info_pred.name().name).unwrap();
-
-//         //
-//         let output_op_pred = graph.operation_by_name_required(&output_info_pred.name().name).unwrap();
-
-//         //Create some tensors to feed to the model for training, one as input and one as the target value
-//         //Note: All tensors must be declared before args!
-//         let input_tensor: Tensor<u8> = Tensor::new(&[1,2]).with_values(&input_data.iter().flatten().flatten().map(|&x| x).collect::<Vec<u8>>()).unwrap();
-
-//         //The values will be fed to and retrieved from the model with this
-//         let mut args = SessionRunArgs::new();
-
-//         args.add_feed(&input_op_pred, 0, &input_tensor);
-
-//         let out = args.request_fetch(&output_op_pred, 0);
-
-//         //Run the session
-//         session
-//         .run(&mut args)
-//         .expect("Error occurred during calculations");
-
-//         Ok(args.fetch::<f32>(out).unwrap()[0])
+//         // Print the output tensor
+//         for (i, output) in outputs.iter().enumerate() {
+//             println!("Output {}: {:?}", i, output);
+//         }
+//         // outputs[0].as_slice().unwrap()[0].into()
+//         Ok(outputs[0].as_slice().unwrap()[0])
 //     }
 // }
+
+
+
 
 // use tch::{nn, nn::Module, nn::OptimizerConfig, Device, Tensor};
 

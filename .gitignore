@@ -5,4 +5,7 @@ ai-notes
 *.err
 *.h5
 *.pb
+*.pt
+*.onnx
 saved_model
+__pycache__

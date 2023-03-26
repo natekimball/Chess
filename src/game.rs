@@ -39,7 +39,8 @@ pub struct Game {
     p2_taken: [u8; 5],
     half_move_clock: u8,
     full_move_clock: u8,
-    model: Option<Model>,
+    two_player: bool,
+    // model: Option<Model>,
 }
 
 impl Game {
@@ -52,7 +53,7 @@ impl Game {
 
         let args: Vec<String> = std::env::args().collect();
         let two_player = args.contains(&String::from("--2p"));
-        let model = if two_player { None } else { Some(Model::new()) };
+        // let model = if two_player { None } else { Some(Model::new()) };
 
         Game {
             board,
@@ -73,7 +74,8 @@ impl Game {
             p2_taken: [0; 5],
             half_move_clock: 0,
             full_move_clock: 1,
-            model
+            two_player,
+            // model
         }
     }
 
@@ -100,6 +102,7 @@ impl Game {
             for to in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
+                println!("{}: {:?} -> {:?}", game.evaluate(), from, to);
                 let score = game.minimax(3, false, f32::MIN, f32::MAX);
                 if score > best_score {
                     best_score = score;
@@ -115,6 +118,7 @@ impl Game {
             return self.evaluate();
         }
         if maximizing {
+            println!("maximizing");
             let mut best = f32::MIN;
             for &from in self.get_pieces(self.current_player) {
                 let piece = self.get(from).unwrap();
@@ -131,6 +135,7 @@ impl Game {
             }
             return best;
         } else {
+            println!("minimizing");
             let mut best = f32::MAX;
             for &from in self.get_pieces(self.current_player) {
                 let piece = self.get(from).unwrap();
@@ -150,7 +155,10 @@ impl Game {
     }
 
     pub fn turn(&mut self) {
-        if self.current_player == Player::Two && self.model.is_some() {
+        // if self.current_player == Player::Two && self.model.is_some() {
+        //     return self.algorithm_move();
+        // }
+        if !self.two_player && self.current_player == Player::Two {
             return self.algorithm_move();
         }
         println!("{}", self);
@@ -170,101 +178,43 @@ impl Game {
             "Enter your move (e.g. a2 a4) or enter a position to see its possible moves (e.g. a2):"
         );
         
-        let mut valid_move = false;
-        while !valid_move {
+        loop {
             let (from, to) = self.get_move();
             let mut half_move = false;
-            if self.is_current_player(from) {
-                let piece = self.get(from);
-                let conquered = self.get(to);
-                let move_status = piece.clone().unwrap().valid_move(from, to, self);
-                if move_status == Move::Invalid {
-                    println!("Invalid move! go again.");
+            if !self.is_current_player(from) {
+                println!("You must move one of your own pieces!\nInvalid move! go again.");
+                continue;
+            }
+            let piece = self.get(from);
+            let conquered = self.get(to);
+            let move_status = piece.clone().unwrap().valid_move(from, to, self);
+            if move_status == Move::Invalid {
+                println!("Invalid move! go again.");
+                continue;
+            }
+            if let Some(conquered) = conquered.clone() {
+                if conquered.player() == self.current_player {
+                    println!("You can't take your own piece! go again.");
                     continue;
-                }
-                if let Some(conquered) = conquered.clone() {
-                    if conquered.player() == self.current_player {
-                        println!("You can't take your own piece! go again.");
-                        continue;
-                    } else {
-                        half_move = true;
-                        self.take(to, piece.clone());
-                        self.set(from, None);
-                    }
                 } else {
-                    self.set(to, piece.clone());
+                    half_move = true;
+                    self.take(to, piece.clone());
                     self.set(from, None);
                 }
-                if self.player_in_check() {
-                    if in_check {
-                        println!("Invalid move while you are in check! go again");
-                    } else {
-                        println!("Wait you can't put yourself in check! go again.");
-                    }
-                    self.set(from, self.get(to));
-                    self.set(to, conquered);
-                    continue;
-                } else {
-                    self.set_last_double(None);
-                    match move_status {
-                        Move::Normal => (),
-                        Move::Double(position) => {
-                            self.set_last_double(Some(position));
-                        }
-                        Move::Castle => {
-                            self.castle(to);
-                        }
-                        Move::EnPassant(position) => {
-                            self.take(position, None);
-                        }
-                        Move::Invalid => unreachable!(),
-                    }
-                    if piece.clone().unwrap().is_type::<Pawn>() {
-                        half_move = true;
-                    }
-                    self.set_moved(piece.clone(), from, to);
-                }
-                if (to.1 == 7 || to.1 == 0) && piece.unwrap().is_type::<Pawn>() {
-                    self.promote_piece(to);
-                }
-                if half_move {
-                    self.half_move_clock = 0;
-                }
-                valid_move = true;
             } else {
-                println!("You must move one of your own pieces!");
-            }
-            if !valid_move {
-                println!("Invalid move! go again.");
-            }
-        }
-        if self.game_over {
-            println!("{self}");
-            println!("{} wins!", self.current_player);
-        }
-        self.current_player = self.current_player.other();
-    }
-
-    fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) {
-        //TODO: check
-        let piece = self.get(from);
-        let conquered = self.get(to);
-        let move_status = piece.clone().unwrap().valid_move(from, to, self);
-        if move_status == Move::Invalid {
-            panic!("Invalid move!");
-        }
-        if piece.clone().unwrap().player() != self.current_player {
-            panic!("You must move one of your own pieces!");
-        }
-        self.tick();
-        if let Some(conquered) = conquered.clone() {
-            if conquered.player() == self.current_player {
-                panic!("You can't take your own piece!");
-            } else {
-                self.take(to, piece.clone());
+                self.set(to, piece.clone());
                 self.set(from, None);
             }
-        } else {
+            if self.player_in_check() {
+                if in_check {
+                    println!("Invalid move while you are in check! go again");
+                } else {
+                    println!("Wait you can't put yourself in check! go again.");
+                }
+                self.set(from, self.get(to));
+                self.set(to, conquered);
+                continue;
+            }
             self.set_last_double(None);
             match move_status {
                 Move::Normal => (),
@@ -279,9 +229,68 @@ impl Game {
                 }
                 Move::Invalid => unreachable!(),
             }
-            self.set_moved(piece, from, to)
-            // self.update_piece(from, to);
+            if piece.clone().unwrap().is_type::<Pawn>() {
+                half_move = true;
+                if to.1 == 7 || to.1 == 0 {
+                    self.promote_piece(to);
+                }
+            }
+            self.set_moved(piece.clone(), from, to);
+            if half_move {
+                self.half_move_clock = 0;
+            }
+            break;
         }
+        if self.game_over {
+            println!("{self}");
+            println!("{} wins!", self.current_player);
+        }
+        self.current_player = self.current_player.other();
+    }
+
+    fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) {
+        //TODO: check
+        let piece = self.get(from);
+        let conquered = self.get(to);
+        let move_status = piece.clone().unwrap().valid_move(from, to, self);
+        assert_ne!(move_status, Move::Invalid, "Invalid move!");
+        assert_eq!(piece.clone().unwrap().player(), self.current_player, "You must move one of your own pieces!");
+        let mut half_move = false;
+        self.tick();
+        if let Some(conquered) = conquered.clone() {
+            assert_ne!(conquered.player(), self.current_player, "You can't take your own piece!");
+            half_move = true;
+            self.take(to, piece.clone());
+            self.set(from, None);
+        } else {
+            self.set(to, piece.clone());
+            self.set(from, None);
+        } 
+        assert!(!self.player_in_check(), "Wait you can't put yourself in check!");
+        self.set_last_double(None);
+        match move_status {
+            Move::Normal => (),
+            Move::Double(position) => {
+                self.set_last_double(Some(position));
+            }
+            Move::Castle => {
+                self.castle(to);
+            }
+            Move::EnPassant(position) => {
+                self.take(position, None);
+            }
+            Move::Invalid => unreachable!(),
+        }
+        if piece.clone().unwrap().is_type::<Pawn>() {
+            half_move = true;
+            if to.1 == 7 || to.1 == 0 {
+                self.set(to,Some(Box::new(Queen::new(self.current_player))));
+            }
+        }
+        if half_move {
+            self.half_move_clock = 0;
+        }
+        self.set_moved(piece, from, to);
         self.current_player = self.current_player.other();
     }
     
@@ -364,8 +373,9 @@ impl Game {
                 c -= 1;
             }
         }
-        println!("{:?}", data);
-        self.model.as_ref().unwrap().run_inference(data).unwrap()
+        // println!("{:?}", data);
+        // self.model.as_ref().unwrap().run_inference(data).unwrap()
+        Model::run_inference(data).unwrap()
     }
 
     pub fn algorithm_move(&mut self) {
@@ -437,7 +447,7 @@ impl Game {
 
     #[cfg(test)]
     pub(crate) fn set_model(&mut self, model: Option<Model>) {
-        self.model = model;
+        // self.model = model;
     }
 
     pub fn is_over(&mut self) -> bool {
@@ -869,6 +879,7 @@ impl Game {
                 self.p2_pieces.push(to);
             }
         }
+        // self.remove_piece(from);
     }
 
     pub(crate) fn set_player_pieces(&mut self, player: Player, pieces: Vec<(u8, u8)>) {
