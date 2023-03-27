@@ -1,4 +1,4 @@
-// extern crate tensorflow;
+extern crate tensorflow;
 mod game;
 mod piece;
 mod king;

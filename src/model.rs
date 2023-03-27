@@ -1,167 +1,165 @@
 // tract simply doesn't work with CNNs
 // none of tensorflow, onnx, or pytorch can derive clone
-// if pytorch doesn't work use tensorflow or onnx
+// running into issues with pytorch and onnx
+// onnx: try changing opset or change onnx_model.ir_version = 4
 // maybe use tensorflow with arc?
+// maybe use tensorflow but pass a (arc?) reference to the model from main?
 // maybe use tensorflow or pytorch and define model in main (or other creational pattern) and pass it into game.rs
 
-// use ndarray::Array4;
-use tch::Tensor;
-use tch::CModule;
+use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
-// #[derive(Clone)]
+#[derive(Clone)]
 pub struct Model;
+// pub struct Model<'a> {
+    // pred_input_parameter_name: String,
+    // pred_output_parameter_name: String,
+    // save_dir: String,
+    // graph: &'a Graph,
+    // bundle: &'a SavedModelBundle,
+// }
 
 impl Model {
-    pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
-        // Create a dummy input tensor with the shape [1, 13, 8, 8]
-        // let input_data: Vec<f32> = vec![0.0; 1 * 13 * 8 * 8];
-        let model = CModule::load("model/model.pt").unwrap();
+// impl<'a> Model<'a> {
+    // pub fn new(bundle: &'a SavedModelBundle, graph: &'a Graph) -> Self {
+    //     let pred_input_parameter_name = "conv2d_input".to_owned();
+    //     let pred_output_parameter_name = "dense_4".to_owned();
+    //     let save_dir = "model/saved_model".to_owned();
+    //     Self {
+    //         pred_input_parameter_name,
+    //         pred_output_parameter_name,
+    //         save_dir,
+    //         graph,
+    //         bundle,
+    //     }
+    // }
 
-        let input_data = input_data.into_iter().flatten().flatten().collect::<Vec<u8>>();
-        // let input_tensor = Tensor::of_slice(&input_data);
-        let input_tensor = Tensor::of_slice(&input_data).reshape(&[1, 13, 8, 8]);
+    pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+        let pred_input_parameter_name = "conv2d_input";
+        let pred_output_parameter_name = "dense_4";
     
-        // Run the inference
-        let output = model.forward_ts(&[input_tensor]).unwrap();
+        //Create some tensors to feed to the model for training, one as input and one as the target value
+        //Note: All tensors must be declared before args!
+        let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&input_data.into_iter().flatten().flatten().map(|u| u as f32).collect::<Vec<f32>>()).unwrap();
     
-        // Convert the output tensor to ndarray
-        // let output_shape = [1;4];
-        let output_data: Vec<f32> = output.into();
-        // let output_array = Array4::from_shape_vec(output_shape, output_data).unwrap();
+        //Path of the saved model
+        let save_dir = "model/saved_model";
     
-        // // Print the result
-        // println!("Inference result: {:?}", output_array);
-        println!("Inference result: {:?}", output_data);
-        Ok(output_data[0])
+        //Create a graph
+        let mut graph = Graph::new();
+    
+        //Load save model as graph
+        let bundle = SavedModelBundle::load(
+            &SessionOptions::new(), &["serve"], &mut graph, save_dir
+        ).expect("Can't load saved model");
+    
+        //Initiate a session
+        let session = &bundle.session;
+    
+        //Alternative to saved_model_cli. This will list all signatures in the console when run
+        // let sigs = bundle.meta_graph_def().signatures();
+        // println!("sigs: {:?}", sigs);
+
+    
+        //Retrieve the pred functions signature
+        let signature_train = bundle.meta_graph_def().get_signature("serving_default").unwrap();
+        let input_info_pred = signature_train.get_input(pred_input_parameter_name).unwrap();
+        let output_info_pred = signature_train.get_output(pred_output_parameter_name).unwrap();
+        let input_op_pred = graph.operation_by_name_required(&input_info_pred.name().name).unwrap();
+        let output_op_pred = graph.operation_by_name_required(&output_info_pred.name().name).unwrap();
+    
+        let mut args = SessionRunArgs::new();
+        args.add_feed(&input_op_pred, 0, &input_tensor);
+    
+        let out = args.request_fetch(&output_op_pred, 0);
+    
+        //Run the session
+        session
+        .run(&mut args)
+        .expect("Error occurred during inference");
+    
+        let prediction = args.fetch(out)?;
+    
+        println!("data : {:?}", input_tensor);
+        println!("Prediction: {:?}", prediction);
+        
+        Ok(prediction[0])
     }
 }
 
 
+#[allow(dead_code)]
+fn train() {
+    //Sigmatures declared when we saved the model
+    let train_input_parameter_input_name = "training_input";
+    let train_input_parameter_target_name = "training_target";
+    //Names of output nodes of the graph, retrieved with the saved_model_cli command
+    let train_output_parameter_name = "output_0";
 
+    //Create some tensors to feed to the model for training, one as input and one as the target value
+    //Note: All tensors must be declared before args!
+    let input_tensor: Tensor<f32> = Tensor::new(&[1,2]).with_values(&[1.0, 1.0]).unwrap();
+    let target_tensor: Tensor<f32> = Tensor::new(&[1,1]).with_values(&[2.0]).unwrap();
 
-// use ndarray::prelude::*;
-// use onnxruntime::{environment::Environment, tensor::OrtOwnedTensor};
+    //Path of the saved model
+    let save_dir = "model/tf_saved_model";
 
-// #[derive(Clone)]
-// pub struct Model;
+    //Create a graph
+    let mut graph = Graph::new();
 
-// impl Model {
-//     pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+    //Load save model as graph
+    let bundle = SavedModelBundle::load(
+        &SessionOptions::new(), &["serve"], &mut graph, save_dir
+    ).expect("Can't load saved model");
 
-//         let model_path = "model.onnx";
-//         let input_shape = [1, 13, 8, 8];
+    //Initiate a session
+    let session = &bundle.session;
 
-//         // Initialize the ONNX Runtime environment
-        
-//     // Initialize the ONNX Runtime environment
-//         let environment = Environment::builder()
-//             .with_name("onnx_environment")
-//             .build()
-//             .unwrap();
+    //Alternative to saved_model_cli. This will list all signatures in the console when run
+    // let sigs = bundle.meta_graph_def().signatures();
+    // println!("{:?}", sigs);
+    
 
-//         // Load the ONNX model
-//         let session = environment
-//             .new_session_builder()
-//             .unwrap()
-//             .with_model_from_file(model_path)
-//             .unwrap();
-//         // Create a dummy input tensor with the specified shape
-//         // let input_tensor = ndarray::Array::random(input_shape, ndarray_rand::RandomExt::standard_normal);
-//         let input_tensor = Array::from(input_data.into_iter().flatten().flatten().collect::<Vec<u8>>());
+    //Retrieve the train functions signature
+    let signature_train = bundle.meta_graph_def().get_signature("train").unwrap();
 
-//         // Create input name and value
-//         // let input_name = self.session.input_names()[0].clone();
-//         let input_value = input_tensor.into_dyn();
-        
-//         // Run inference
-//         let outputs: Vec<OrtOwnedTensor<f32, ndarray::Dim<ndarray::IxDynImpl>>> = session
-//             .run(vec!(input_value))
-//             .unwrap();
+    //Input information
+    let input_info_train = signature_train.get_input(train_input_parameter_input_name).unwrap();
+    let target_info_train = signature_train.get_input(train_input_parameter_target_name).unwrap();
 
-//         // Print the output tensor
-//         for (i, output) in outputs.iter().enumerate() {
-//             println!("Output {}: {:?}", i, output);
-//         }
-//         // outputs[0].as_slice().unwrap()[0].into()
-//         Ok(outputs[0].as_slice().unwrap()[0])
-//     }
-// }
+    //Output information
+    let output_info_train = signature_train.get_output(train_output_parameter_name).unwrap();
 
+    //Input operation
+    let input_op_train = graph.operation_by_name_required(&input_info_train.name().name).unwrap();
+    let target_op_train = graph.operation_by_name_required(&target_info_train.name().name).unwrap();
 
+    //Output operation
+    let output_op_train = graph.operation_by_name_required(&output_info_train.name().name).unwrap();
 
+    //The values will be fed to and retrieved from the model with this
+    let mut args = SessionRunArgs::new();
 
-// use tch::{nn, nn::Module, nn::OptimizerConfig, Device, Tensor};
+    //Feed the tensors into the graph
+    args.add_feed(&input_op_train, 0, &input_tensor);
+    args.add_feed(&target_op_train, 0, &target_tensor);
 
-// fn train() {
-//     // Set device (use GPU if available)
-//     let device = Device::cuda_if_available();
+    //Fetch result from graph
+    let out = args.request_fetch(&output_op_train, 0);
 
-//     // Load your chess data and split into training and validation sets
-//     // ...
+    //Run the session
+    session
+    .run(&mut args)
+    .expect("Error occurred during calculations");
 
-//     // Create the CNN model
-//     let vs = nn::VarStore::new(device);
-//     let net = create_cnn(&vs.root());
+    //Retrieve the result of the operation
+    let loss: f32 = args.fetch(out).unwrap()[0];
 
-//     // Set the optimizer and learning rate
-//     let sgd = nn::Sgd::default().learning_rate(0.01).build(&vs, 0.01).unwrap();
+    println!("Loss: {:?}", loss);
+}
+    
+// https://github.com/Grimmp/RustTensorFlowTraining
 
-//     // Train the model
-//     for epoch in 1..=100 {
-//         // Training loop
-//         // ...
-
-//         // Validation loop
-//         // ...
-
-//         println!("Epoch: {}", epoch);
-//     }
-// }
-
-// fn create_cnn(p: &nn::Path) -> impl nn::Module {
-//     let conv1 = nn::conv2d(p, 13, 64, 3, Default::default());
-//     let conv2 = nn::conv2d(p, 64, 64, 3, Default::default());
-//     let conv3 = nn::conv2d(p, 64, 128, 3, Default::default());
-//     let conv4 = nn::conv2d(p, 128, 128, 3, Default::default());
-//     let conv5 = nn::conv2d(p, 128, 256, 3, Default::default());
-//     let conv6 = nn::conv2d(p, 256, 256, 3, Default::default());
-//     let conv7 = nn::conv2d(p, 256, 512, 3, Default::default());
-//     let conv8 = nn::conv2d(p, 512, 512, 3, Default::default());
-//     let conv9 = nn::conv2d(p, 512, 1024, 3, Default::default());
-//     let conv10 = nn::conv2d(p, 1024, 2048, 3, Default::default());
-//     let fc1 = nn::linear(p, 2048, 4096, Default::default());
-//     let fc2 = nn::linear(p, 4096, 1, Default::default()); // Output layer for evaluating board position
-
-//     move |xs: &Tensor| {
-//         xs.apply(&conv1)
-//             .relu()
-//             .apply(&conv2)
-//             .relu()
-//             .apply(&conv3)
-//             .relu()
-//             .apply(&conv4)
-//             .relu()
-//             .apply(&conv5)
-//             .relu()
-//             .apply(&conv6)
-//             .relu()
-//             .apply(&conv7)
-//             .relu()
-//             .apply(&conv8)
-//             .relu()
-//             .apply(&conv9)
-//             .relu()
-//             .apply(&conv10)
-//             .relu()
-//             .flat_view()
-//             .apply(&fc1)
-//             .relu()
-//             .apply(&fc2)
-//     }
-// }
-
-// use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
-// fn infer() {
+// fn run_regression(input_data: [[[u8; 8]; 8]; 13]) {
 
 //     //Sigmatures declared when we saved the model
 //     let train_input_parameter_input_name = "training_input";
@@ -178,7 +176,7 @@ impl Model {
 //     let target_tensor: Tensor<f32> = Tensor::new(&[1,1]).with_values(&[2.0]).unwrap();
 
 //     //Path of the saved model
-//     let save_dir = "create_model/custom_model";
+//     let save_dir = "model/tf_saved_model";
 
 //     //Create a graph
 //     let mut graph = Graph::new();
@@ -256,18 +254,169 @@ impl Model {
 //     //Run the session
 //     session
 //     .run(&mut args)
-//     .expect("Error occurred during calculations");
+//     .expect("Error occurred during inference");
 
 //     let prediction: f32 = args.fetch(out).unwrap()[0];
 
-//     println!("Prediction: {:?}\nActual: 2.0", prediction);
+//     println!("Prediction: {prediction}");
     
-   
+//     prediction
 // }
 
+
+
+// use ndarray::prelude::*;
+// use onnxruntime::{environment::Environment, tensor::OrtOwnedTensor};
+
+// // #[derive(Clone)]
+// pub struct Model;
+
+// impl Model {
+//     pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+
+//         let model_path = "model/model.onnx";
+//         let input_shape = [1, 13, 8, 8];
+
+//         // Initialize the ONNX Runtime environment
+//         let environment = Environment::builder()
+//             .with_name("onnx_environment")
+//             .build()
+//             .unwrap();
+
+//         // Load the ONNX model
+//         let mut session = environment
+//             .new_session_builder()
+//             .unwrap()
+//             .with_model_from_file(model_path)
+//             .unwrap();
+//         // Create a dummy input tensor with the specified shape
+//         // let input_tensor = ndarray::Array::random(input_shape, ndarray_rand::RandomExt::standard_normal);
+//         let input_tensor = Array::from(input_data.into_iter().flatten().flatten().collect::<Vec<u8>>()).into_shape(input_shape).unwrap();
+        
+//         // Create input name and value
+//         // let input_name = self.session.input_names()[0].clone();
+//         let input_value = input_tensor.into_dyn();
+        
+//         // Run inference
+//         let outputs: Vec<OrtOwnedTensor<f32, ndarray::Dim<ndarray::IxDynImpl>>> = session
+//             .run(vec!(input_value))
+//             .unwrap();
+
+//         // Print the output tensor
+//         for (i, output) in outputs.iter().enumerate() {
+//             println!("Output {}: {:?}", i, output);
+//         }
+//         // outputs[0].as_slice().unwrap()[0].into()
+//         Ok(outputs[0].as_slice().unwrap()[0])
+//     }
+// }
+
+
+
+// // use ndarray::Array4;
+// use tch::Tensor;
+// use tch::CModule;
+
+// // #[derive(Clone)]
+// pub struct Model;
+
+// impl Model {
+//     pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+//         // Create a dummy input tensor with the shape [1, 13, 8, 8]
+//         // let input_data: Vec<f32> = vec![0.0; 1 * 13 * 8 * 8];
+//         let model = CModule::load("model/model.pt").unwrap();
+//         println!("Model loaded");
+//         let input_data = input_data.into_iter().flatten().flatten().collect::<Vec<u8>>();
+//         let input_tensor = Tensor::of_slice(&input_data).reshape(&[1, 13, 8, 8]);
     
-// https://github.com/Grimmp/RustTensorFlowTraining
+//         // Run the inference
+//         let output = model.forward_ts(&[input_tensor]).unwrap();
     
+//         // Convert the output tensor to ndarray
+//         let output_data: Vec<f32> = output.into();
+        
+//         // let output_shape = [1;4];
+//         // let output_array = Array4::from_shape_vec(output_shape, output_data).unwrap();
+//         // println!("Inference result: {:?}", output_array);
+
+//         println!("Inference result: {:?}", output_data);
+//         Ok(output_data[0])
+//     }
+// }
+
+
+
+// use tch::{nn, nn::Module, nn::OptimizerConfig, Device, Tensor};
+
+// fn train() {
+//     // Set device (use GPU if available)
+//     let device = Device::cuda_if_available();
+
+//     // Load your chess data and split into training and validation sets
+//     // ...
+
+//     // Create the CNN model
+//     let vs = nn::VarStore::new(device);
+//     let net = create_cnn(&vs.root());
+
+//     // Set the optimizer and learning rate
+//     let sgd = nn::Sgd::default().learning_rate(0.01).build(&vs, 0.01).unwrap();
+
+//     // Train the model
+//     for epoch in 1..=100 {
+//         // Training loop
+//         // ...
+
+//         // Validation loop
+//         // ...
+
+//         println!("Epoch: {}", epoch);
+//     }
+// }
+
+// fn create_cnn(p: &nn::Path) -> impl nn::Module {
+//     let conv1 = nn::conv2d(p, 13, 64, 3, Default::default());
+//     let conv2 = nn::conv2d(p, 64, 64, 3, Default::default());
+//     let conv3 = nn::conv2d(p, 64, 128, 3, Default::default());
+//     let conv4 = nn::conv2d(p, 128, 128, 3, Default::default());
+//     let conv5 = nn::conv2d(p, 128, 256, 3, Default::default());
+//     let conv6 = nn::conv2d(p, 256, 256, 3, Default::default());
+//     let conv7 = nn::conv2d(p, 256, 512, 3, Default::default());
+//     let conv8 = nn::conv2d(p, 512, 512, 3, Default::default());
+//     let conv9 = nn::conv2d(p, 512, 1024, 3, Default::default());
+//     let conv10 = nn::conv2d(p, 1024, 2048, 3, Default::default());
+//     let fc1 = nn::linear(p, 2048, 4096, Default::default());
+//     let fc2 = nn::linear(p, 4096, 1, Default::default()); // Output layer for evaluating board position
+
+//     move |xs: &Tensor| {
+//         xs.apply(&conv1)
+//             .relu()
+//             .apply(&conv2)
+//             .relu()
+//             .apply(&conv3)
+//             .relu()
+//             .apply(&conv4)
+//             .relu()
+//             .apply(&conv5)
+//             .relu()
+//             .apply(&conv6)
+//             .relu()
+//             .apply(&conv7)
+//             .relu()
+//             .apply(&conv8)
+//             .relu()
+//             .apply(&conv9)
+//             .relu()
+//             .apply(&conv10)
+//             .relu()
+//             .flat_view()
+//             .apply(&fc1)
+//             .relu()
+//             .apply(&fc2)
+//     }
+// }
+
+  
     
     
     
