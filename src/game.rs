@@ -42,6 +42,7 @@ pub struct Game {
     full_move_clock: u8,
     two_player: bool,
     model: Option<Model>,
+    computer_player: Option<Player>,
 }
 
 impl Game {
@@ -53,13 +54,15 @@ impl Game {
         board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
 
         let args: Vec<String> = std::env::args().collect();
-        let two_player = args.contains(&String::from("--2p"));
-        let model;
+        let two_player = args.contains(&String::from("--two-player"));
+        let (model, computer_player);
         if two_player {
             model = None;
+            computer_player = None;
         } else {
             model = Some(Model::new());
-        }
+            computer_player = if args.contains(&String::from("--p2")) {Some(Player::One)} else {Some(Player::Two)};
+        };
 
         Game {
             board,
@@ -81,7 +84,8 @@ impl Game {
             half_move_clock: 0,
             full_move_clock: 1,
             two_player,
-            model
+            model,
+            computer_player
         }
     }
 
@@ -108,8 +112,8 @@ impl Game {
             for to in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                println!("{}: {:?} -> {:?}", game.evaluate(), from, to);
-                let score = game.minimax(3, false, f32::MIN, f32::MAX);
+                // println!("{}: {:?} -> {:?}", game.evaluate(), from, to);
+                let score = game.minimax(2, false, f32::MIN, f32::MAX);
                 if score > best_score {
                     best_score = score;
                     best_move = (from, to);
@@ -162,7 +166,7 @@ impl Game {
         // if self.current_player == Player::Two && self.model.is_some() {
         //     return self.algorithm_move();
         // }
-        if !self.two_player && self.current_player == Player::Two {
+        if !self.two_player && self.current_player == self.computer_player.unwrap() {
             return self.algorithm_move();
         }
         println!("{}", self);
@@ -384,7 +388,16 @@ impl Game {
 
     pub fn algorithm_move(&mut self) {
         let (from, to) = self.get_best_move();
-        println!("Player two moved {} -> {} ", coord_to_pos(from), coord_to_pos(to));
+        println!("Player {} moved {} -> {} ", self.computer_player.unwrap().number(), coord_to_pos(from), coord_to_pos(to));
+        let piece = self.get(to);
+        if let Some(piece) = piece {
+            println!(
+                "Player {} took {}'s {}!",
+                self.current_player.number(),
+                self.current_player.other(),
+                piece.name()
+            );
+        }
         self.move_piece(from, to);
     }
 
@@ -451,7 +464,7 @@ impl Game {
 
     #[cfg(test)]
     pub(crate) fn set_model(&mut self, model: Option<Model>) {
-        // self.model = model;
+        self.model = model;
     }
 
     pub fn is_over(&mut self) -> bool {
@@ -539,12 +552,14 @@ impl Game {
         if piece.name() == "king" {
             panic!("You can't take a king, something went wrong!");
         }
-        println!(
-            "Player {} took {}'s {}!",
-            self.current_player.number(),
-            self.current_player.other(),
-            piece.name()
-        );
+        if self.two_player || self.current_player != self.computer_player.unwrap() {
+            println!(
+                "Player {} took {}'s {}!",
+                self.current_player.number(),
+                self.current_player.other(),
+                piece.name()
+            );
+        }
         self.remove_piece(to);
         self.set(to, new_piece);
         let i = match piece.name() {
