@@ -6,66 +6,53 @@
 // maybe use tensorflow but pass a (arc?) reference to the model from main?
 // maybe use tensorflow or pytorch and define model in main (or other creational pattern) and pass it into game.rs
 
+use std::rc::Rc;
+
+use ndarray::Array3;
+use ndarray_rand::{RandomExt, rand_distr::Uniform};
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 #[derive(Clone)]
-pub struct Model;
-// pub struct Model<'a> {
-    // pred_input_parameter_name: String,
-    // pred_output_parameter_name: String,
-    // save_dir: String,
-    // graph: &'a Graph,
-    // bundle: &'a SavedModelBundle,
-// }
+pub struct Model {
+    pred_input_parameter_name: String,
+    pred_output_parameter_name: String,
+    graph: Rc<Graph>,
+    bundle: Rc<SavedModelBundle>,
+}
 
 impl Model {
-// impl<'a> Model<'a> {
-    // pub fn new(bundle: &'a SavedModelBundle, graph: &'a Graph) -> Self {
-    //     let pred_input_parameter_name = "conv2d_input".to_owned();
-    //     let pred_output_parameter_name = "dense_4".to_owned();
-    //     let save_dir = "model/saved_model".to_owned();
-    //     Self {
-    //         pred_input_parameter_name,
-    //         pred_output_parameter_name,
-    //         save_dir,
-    //         graph,
-    //         bundle,
-    //     }
-    // }
-
-    pub fn run_inference(input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
-        let pred_input_parameter_name = "conv2d_input";
-        let pred_output_parameter_name = "dense_4";
-    
-        //Create some tensors to feed to the model for training, one as input and one as the target value
-        //Note: All tensors must be declared before args!
-        let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&input_data.into_iter().flatten().flatten().map(|u| u as f32).collect::<Vec<f32>>()).unwrap();
-    
-        //Path of the saved model
+    pub fn new() -> Self {
+        let pred_input_parameter_name = "conv2d_input".to_owned();
+        let pred_output_parameter_name = "dense_4".to_owned();
         let save_dir = "model/saved_model";
-    
-        //Create a graph
         let mut graph = Graph::new();
-    
-        //Load save model as graph
         let bundle = SavedModelBundle::load(
             &SessionOptions::new(), &["serve"], &mut graph, save_dir
         ).expect("Can't load saved model");
+        // println!("sigs: {:?}", bundle.meta_graph_def().signatures());
+        Self {
+            pred_input_parameter_name,
+            pred_output_parameter_name,
+            graph: Rc::new(graph),
+            bundle: Rc::new(bundle),
+        }
+    }
+
+    pub fn run_inference(&self, input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
+        let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&input_data.into_iter().flatten().flatten().map(|u| u as f32).collect::<Vec<f32>>()).unwrap();
+        // let random_array: Array3<f32> = Array3::random((13, 8, 8), Uniform::new(0.0, 1.0));
+        // let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&random_array.into_iter().map(|f| *f).collect::<Vec<f32>>()).unwrap();
     
         //Initiate a session
-        let session = &bundle.session;
-    
-        //Alternative to saved_model_cli. This will list all signatures in the console when run
-        // let sigs = bundle.meta_graph_def().signatures();
-        // println!("sigs: {:?}", sigs);
+        let session = &self.bundle.session;
 
     
         //Retrieve the pred functions signature
-        let signature_train = bundle.meta_graph_def().get_signature("serving_default").unwrap();
-        let input_info_pred = signature_train.get_input(pred_input_parameter_name).unwrap();
-        let output_info_pred = signature_train.get_output(pred_output_parameter_name).unwrap();
-        let input_op_pred = graph.operation_by_name_required(&input_info_pred.name().name).unwrap();
-        let output_op_pred = graph.operation_by_name_required(&output_info_pred.name().name).unwrap();
+        let signature_train = self.bundle.meta_graph_def().get_signature("serving_default").unwrap();
+        let input_info_pred = signature_train.get_input(self.pred_input_parameter_name.as_str()).unwrap();
+        let output_info_pred = signature_train.get_output(self.pred_output_parameter_name.as_str()).unwrap();
+        let input_op_pred = self.graph.operation_by_name_required(&input_info_pred.name().name).unwrap();
+        let output_op_pred = self.graph.operation_by_name_required(&output_info_pred.name().name).unwrap();
     
         let mut args = SessionRunArgs::new();
         args.add_feed(&input_op_pred, 0, &input_tensor);
@@ -79,7 +66,7 @@ impl Model {
     
         let prediction = args.fetch(out)?;
     
-        println!("data : {:?}", input_tensor);
+        // println!("data : {:?}", input_tensor);
         println!("Prediction: {:?}", prediction);
         
         Ok(prediction[0])
@@ -158,6 +145,25 @@ fn train() {
 }
     
 // https://github.com/Grimmp/RustTensorFlowTraining
+
+// pub struct Model<'a> {
+//     pred_input_parameter_name: String,
+//     pred_output_parameter_name: String,
+//     graph: &'a Graph,
+//     bundle: &'a SavedModelBundle,
+// }
+
+// impl<'a> Model<'a> {
+    // pub fn new(bundle: &'a SavedModelBundle, graph: &'a Graph) -> Self {
+    //     let pred_input_parameter_name = "conv2d_input".to_owned();
+    //     let pred_output_parameter_name = "dense_4".to_owned();
+    //     Self {
+    //         pred_input_parameter_name,
+    //         pred_output_parameter_name,
+    //         graph,
+    //         bundle,
+    //     }
+    // }
 
 // fn run_regression(input_data: [[[u8; 8]; 8]; 13]) {
 

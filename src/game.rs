@@ -13,8 +13,9 @@ use colored::Colorize;
 use std::{
     cmp::{max, min},
     fmt::{Display, Error, Formatter},
-    io,
+    io, rc::Rc,
 };
+use tensorflow::{Graph, SavedModelBundle, SessionOptions};
 
 pub type Square = Option<Box<dyn Piece>>;
 pub type Board = Vec<Vec<Square>>;
@@ -40,7 +41,7 @@ pub struct Game {
     half_move_clock: u8,
     full_move_clock: u8,
     two_player: bool,
-    // model: Option<Model>,
+    model: Option<Model>,
 }
 
 impl Game {
@@ -53,7 +54,12 @@ impl Game {
 
         let args: Vec<String> = std::env::args().collect();
         let two_player = args.contains(&String::from("--2p"));
-        // let model = if two_player { None } else { Some(Model::new()) };
+        let model;
+        if two_player {
+            model = None;
+        } else {
+            model = Some(Model::new());
+        }
 
         Game {
             board,
@@ -75,7 +81,7 @@ impl Game {
             half_move_clock: 0,
             full_move_clock: 1,
             two_player,
-            // model
+            model
         }
     }
 
@@ -118,7 +124,6 @@ impl Game {
             return self.evaluate();
         }
         if maximizing {
-            println!("maximizing");
             let mut best = f32::MIN;
             for &from in self.get_pieces(self.current_player) {
                 let piece = self.get(from).unwrap();
@@ -135,7 +140,6 @@ impl Game {
             }
             return best;
         } else {
-            println!("minimizing");
             let mut best = f32::MAX;
             for &from in self.get_pieces(self.current_player) {
                 let piece = self.get(from).unwrap();
@@ -374,8 +378,8 @@ impl Game {
             }
         }
         // println!("{:?}", data);
-        // self.model.as_ref().unwrap().run_inference(data).unwrap()
-        Model::run_inference(data).unwrap()
+        self.model.as_ref().unwrap().run_inference(data).unwrap()
+        // Model::run_inference(data).unwrap()
     }
 
     pub fn algorithm_move(&mut self) {
