@@ -1,15 +1,4 @@
-// tract simply doesn't work with CNNs
-// none of tensorflow, onnx, or pytorch can derive clone
-// running into issues with pytorch and onnx
-// onnx: try changing opset or change onnx_model.ir_version = 4
-// maybe use tensorflow with arc?
-// maybe use tensorflow but pass a (arc?) reference to the model from main?
-// maybe use tensorflow or pytorch and define model in main (or other creational pattern) and pass it into game.rs
-
 use std::rc::Rc;
-
-use ndarray::Array3;
-use ndarray_rand::{RandomExt, rand_distr::Uniform};
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 #[derive(Clone)]
@@ -24,7 +13,7 @@ impl Model {
     pub fn new() -> Self {
         let pred_input_parameter_name = "conv2d_input".to_owned();
         let pred_output_parameter_name = "dense_4".to_owned();
-        let save_dir = "model/saved_model";
+        let save_dir = "model/tf_saved_model";
         let mut graph = Graph::new();
         let bundle = SavedModelBundle::load(
             &SessionOptions::new(), &["serve"], &mut graph, save_dir
@@ -40,14 +29,9 @@ impl Model {
 
     pub fn run_inference(&self, input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
         let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&input_data.into_iter().flatten().flatten().map(|u| u as f32).collect::<Vec<f32>>()).unwrap();
-        // let random_array: Array3<f32> = Array3::random((13, 8, 8), Uniform::new(0.0, 1.0));
-        // let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&random_array.into_iter().map(|f| *f).collect::<Vec<f32>>()).unwrap();
-    
-        //Initiate a session
+
         let session = &self.bundle.session;
 
-    
-        //Retrieve the pred functions signature
         let signature_train = self.bundle.meta_graph_def().get_signature("serving_default").unwrap();
         let input_info_pred = signature_train.get_input(self.pred_input_parameter_name.as_str()).unwrap();
         let output_info_pred = signature_train.get_output(self.pred_output_parameter_name.as_str()).unwrap();
@@ -59,7 +43,6 @@ impl Model {
     
         let out = args.request_fetch(&output_op_pred, 0);
     
-        //Run the session
         session
         .run(&mut args)
         .expect("Error occurred during inference");
