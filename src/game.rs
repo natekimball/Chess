@@ -83,17 +83,12 @@ impl Game {
             panic!("Stalemate!");
         }
 
-        possible_moves.sort_by(|&(from1,to1),&(from2, to2)| {
-            let mut game1 = self.clone();
-            let mut game2 = self.clone();
-            game1.move_piece(from1, to1);
-            game2.move_piece(from2, to2);
-            game2.evaluate().partial_cmp(&game1.evaluate()).unwrap()
-        });
+        self.sort_moves(&mut possible_moves);
         
         let mut best_move = possible_moves[0];
         let mut best_score = f32::MIN;
-        // let possible_moves = possible_moves.into_iter().take(8).collect::<Vec<((u8,u8),(u8,u8))>>();
+        // reduce with better evaluation accuracy
+        let possible_moves = possible_moves.into_iter().take(32).collect::<Vec<((u8,u8),(u8,u8))>>();
         for i in 0..=(possible_moves.len()/NUM_THREADS) {
             let mut threads = Vec::with_capacity(8);
             let moves = possible_moves.clone().into_iter().skip(i*NUM_THREADS).take(NUM_THREADS).collect::<Vec<((u8,u8),(u8,u8))>>();
@@ -101,7 +96,8 @@ impl Game {
                 let mut game = self.clone();
                 threads.push(thread::spawn(move || {
                     game.move_piece(from, to);
-                    ((from,to),game.minimax(2, false, f32::MIN, f32::MAX))
+                    // ((from,to),game.minimax(3, false, f32::MIN, f32::MAX))
+                    ((from,to),game.tree_search(3, false, f32::MIN, f32::MAX))
                 }));
             }
             for thread in threads {
@@ -115,39 +111,77 @@ impl Game {
         best_move
     }
 
-    fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
+    // fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
+    //     if depth == 0 {
+    //         return self.evaluate();
+    //     }
+    //     if maximizing {
+    //         let mut best = f32::MIN;
+    //         for &from in self.get_pieces(self.current_player) {
+    //             let piece = self.get(from).unwrap();
+    //             for to in piece.get_legal_moves(from, &mut self.clone()) {
+    //                 let mut game = self.clone();
+    //                 game.move_piece(from, to);
+    //                 let score = game.minimax(depth - 1, false, alpha, beta);
+    //                 best = f32::max(best, score);
+    //                 alpha = f32::max(alpha, score);
+    //                 if beta <= alpha {
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         return best;
+    //     } else {
+    //         let mut best = f32::MAX;
+    //         for &from in self.get_pieces(self.current_player) {
+    //             let piece = self.get(from).unwrap();
+    //             for to in piece.get_legal_moves(from, &mut self.clone()) {
+    //                 let mut game = self.clone();
+    //                 game.move_piece(from, to);
+    //                 let score = game.minimax(depth - 1, true, alpha, beta);
+    //                 best = f32::min(best, score);
+    //                 beta = f32::min(beta, score);
+    //                 if beta <= alpha {
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         return best;
+    //     }
+    // }
+
+    fn tree_search(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
+        // the algorithm assumes a good evaluation function to approximate game state values
         if depth == 0 {
             return self.evaluate();
         }
+        let mut moves = self.get_possible_moves(self.current_player);
+        self.sort_moves(&mut moves);
+        moves = moves.into_iter().take(NUM_THREADS*4).collect::<Vec<((u8,u8),(u8,u8))>>();
+
         if maximizing {
             let mut best = f32::MIN;
-            for &from in self.get_pieces(self.current_player) {
-                let piece = self.get(from).unwrap();
-                for to in piece.get_legal_moves(from, &mut self.clone()) {
-                    let mut game = self.clone();
-                    game.move_piece(from, to);
-                    let score = game.minimax(depth - 1, false, alpha, beta);
-                    best = f32::max(best, score);
-                    alpha = f32::max(alpha, score);
-                    if beta <= alpha {
-                        break;
-                    }
+            for (from, to) in moves {
+                let mut game = self.clone();
+                game.move_piece(from, to);
+                let score = game.tree_search(depth - 1, false, alpha, beta);
+                best = f32::max(best, score);
+                alpha = f32::max(alpha, score);
+                if beta <= alpha {
+                    break;
                 }
             }
             return best;
         } else {
             let mut best = f32::MAX;
-            for &from in self.get_pieces(self.current_player) {
-                let piece = self.get(from).unwrap();
-                for to in piece.get_legal_moves(from, &mut self.clone()) {
-                    let mut game = self.clone();
-                    game.move_piece(from, to);
-                    let score = game.minimax(depth - 1, true, alpha, beta);
-                    best = f32::min(best, score);
-                    beta = f32::min(beta, score);
-                    if beta <= alpha {
-                        break;
-                    }
+            for (from, to) in moves {
+                let mut game = self.clone();
+                game.move_piece(from, to);
+                let score = game.tree_search(depth - 1, true, alpha, beta);
+                best = f32::min(best, score);
+                beta = f32::min(beta, score);
+                if beta <= alpha {
+                    break;
                 }
             }
             return best;
@@ -155,9 +189,6 @@ impl Game {
     }
 
     pub fn turn(&mut self) {
-        // if self.current_player == Player::Two && self.model.is_some() {
-        //     return self.algorithm_move();
-        // }
         if !self.two_player && self.current_player == self.computer_player.unwrap() {
             return self.algorithm_move();
         }
@@ -249,7 +280,6 @@ impl Game {
     }
 
     fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) {
-        //TODO: check
         let piece = self.get(from);
         let conquered = self.get(to);
         let move_status = piece.clone().unwrap().valid_move(from, to, self);
@@ -373,9 +403,7 @@ impl Game {
                 c -= 1;
             }
         }
-        // println!("{:?}", data);
         self.model.as_ref().unwrap().run_inference(data).unwrap()
-        // Model::run_inference(data).unwrap()
     }
 
     pub fn algorithm_move(&mut self) {
@@ -474,7 +502,7 @@ impl Game {
         input.trim().to_ascii_lowercase() == "y"
     }
 
-    // fn get_piece_score(&self) -> i32 {
+    // fn get_piece_scores(&self) -> i32 {
     //     let mut score = 0;
     //     for piece in self.p1_pieces.iter() {
     //         let piece = self.get(*piece).unwrap();
@@ -925,6 +953,16 @@ impl Game {
         }
         self.half_move_clock += 1;
         self.full_move_clock += 1;
+    }
+
+    fn sort_moves(&self, moves: &mut Vec<((u8, u8), (u8, u8))>) {
+        moves.sort_by(|&(from1,to1),&(from2, to2)| {
+            let mut game1 = self.clone();
+            let mut game2 = self.clone();
+            game1.move_piece(from1, to1);
+            game2.move_piece(from2, to2);
+            game2.evaluate().partial_cmp(&game1.evaluate()).unwrap()
+        });
     }
 }
 

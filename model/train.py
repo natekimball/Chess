@@ -3,14 +3,17 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from keras import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization, Activation, Input
+from keras.models import Model, load_model
 from sklearn.model_selection import train_test_split
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 import util
-import model
 
-data = pd.read_csv('data/chessData.csv', skiprows=range(1,199999), nrows=99999) #skiprows=159999
-# data.set_index(['FEN', 'Evaluation'])
-# data.dropna(inplace=True)
+skiprows = 0
+nrows = 100000
+data = pd.read_csv('data/chessData.csv', nrows) #12958036 total lines
+# data.columns = ['FEN', 'Evaluation']
+print(f"rows {skiprows}-{nrows+skiprows}")
 
 print(data.head())
 
@@ -20,75 +23,55 @@ print(data.head())
 X = data['FEN'].values
 y = data['Evaluation'].values
 
-# print(data['FEN'][0])
-X_train, X_test, y_train, y_test = [i.tolist() for i in train_test_split(X, y, test_size=0.2, random_state=42)]
-print(np.array(X_train).shape)
+print(np.array(X).shape)
 
-# model = Sequential([
-#     Conv2D(
-#         filters=32, kernel_size=3, padding='same', activation='relu', input_shape=(13, 8, 8)),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=32, kernel_size=3, padding='same', activation='relu'),
-#     MaxPooling2D(pool_size=1),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=64, kernel_size=3, padding='same', activation='relu'),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=64, kernel_size=3, padding='same', activation='relu'),
-#     MaxPooling2D(pool_size=1),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=128, kernel_size=3, padding='same', activation='relu'),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=128, kernel_size=3, padding='same', activation='relu'),
-#     MaxPooling2D(pool_size=1),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=256, kernel_size=3, padding='same', activation='relu'),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=256, kernel_size=3, padding='same', activation='relu'),
-#     MaxPooling2D(pool_size=1),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=512, kernel_size=3, padding='same', activation='relu'),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=512, kernel_size=3, padding='same', activation='relu'),
-#     MaxPooling2D(pool_size=2),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=1024, kernel_size=3, padding='same', activation='relu'),
-#     BatchNormalization(),
-#     Conv2D(
-#         filters=1024, kernel_size=3, padding='same', activation='relu'),
-#     MaxPooling2D(pool_size=2),
-#     BatchNormalization(),
-#     Flatten(),
-#     Dense(units=4096, activation='relu'),
-#     Dropout(0.25),
-#     Dense(units=4096, activation='relu'),
-#     Dropout(0.25),
-#     Dense(units=2048, activation='relu'),
-#     Dropout(0.25),
-#     Dense(units=1024, activation='relu'),
-#     Dense(1, activation='tanh')
-# ])
+# Parameters
+input_shape = (13, 8, 8)
+num_filters = 256
+num_residual_blocks = 10
 
-model = keras.models.load_model('saved_model')
+# Input layer
+input_layer = Input(shape=input_shape)
 
-# opt = keras.optimizers.Adam(learning_rate=3e-4)
-# model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-# model.optimizer.lr = 3e-4
+# Initial convolutional layer
+x = Conv2D(filters=num_filters, kernel_size=3, padding='same', activation='relu')(input_layer)
 
-history = model.fit(X_train, y_train, epochs=20, batch_size=64, validation_data=(X_test, y_test))
+# Residual blocks
+for _ in range(num_residual_blocks):
+    y = Conv2D(filters=num_filters, kernel_size=3, padding='same', activation='relu')(x)
+    y = Conv2D(filters=num_filters, kernel_size=3, padding='same')(y)
+    x = tf.keras.layers.add([x, y])
+    x = Activation('relu')(x)
 
-z = model.evaluate(X_test, y_test, verbose=2)
+## Policy head
+# policy_head = Conv2D(filters=73, kernel_size=1, padding='same', activation='relu')(x)
+# policy_head = Flatten()(policy_head)
+# policy_head = Dense(8 * 8 * 73, activation='softmax', name='policy_output')(policy_head)
 
-print(z)
+# Value head
+value_head = Conv2D(filters=1, kernel_size=1, padding='same', activation='relu')(x)
+value_head = Flatten()(value_head)
+value_head = Dense(256, activation='relu')(value_head)
+value_head = Dense(1, activation='tanh', name='value_output')(value_head)
+
+# Create the model
+model = Model(inputs=input_layer, outputs=value_head)
+
+learning_rate = 2e-4
+optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+
+model.compile(optimizer=optimizer, loss='mse', metrics='mae')
+
+model.summary()
+
+# model = load_model('saved_model')
+
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, min_lr=1e-6)
+early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
+
+history = model.fit(X, y, epochs=20, batch_size=64, validation_split=.1, callbacks=[reduce_lr, early_stopping])
+
+print(history)
 
 model.save('saved_model')
-save_frozen(model)
+util.save_frozen(model)

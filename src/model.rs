@@ -23,7 +23,7 @@ impl Model {
             pred_input_parameter_name,
             pred_output_parameter_name,
             graph: Arc::new(graph),
-            bundle: Arc::new(bundle),
+            bundle: Arc::new(bundle)
         }
     }
 
