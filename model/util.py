@@ -1,4 +1,9 @@
 import numpy as np
+import sys
+import onnx
+import torch
+from onnx2pytorch import ConvertModel
+import tf2onnx
 
 def fen_to_mat(fen):
     mat = np.zeros((13, 8, 8), dtype=np.int8)
@@ -90,3 +95,48 @@ def evaluation_to_int(evaluation):
     if evaluation[0] == '#':
         return int(evaluation[1:])/10
     return int(evaluation)/10
+
+def save_frozen(model):
+    infer = loaded.signatures['serving_default']
+
+    # Convert the SavedModel to a frozen graph
+    frozen_func = convert_variables_to_constants_v2(infer)
+    frozen_func.graph.as_graph_def()
+
+    # Save the frozen graph to a .pb file
+    with tf.io.gfile.GFile('saved_model.pb', 'wb') as f:
+        f.write(frozen_func.graph.as_graph_def().SerializeToString())
+
+
+def convert_tf_to_onnx(tf_model_path, onnx_model_path):
+    # Load the TensorFlow model
+    model_proto, _ = tf2onnx.convert.from_saved_model(tf_model_path)
+
+    # Save the ONNX model
+    with open(onnx_model_path, "wb") as f:
+        f.write(model_proto.SerializeToString())
+
+def convert_onnx_to_pytorch(onnx_model_path, pytorch_model_path):
+    # Load the ONNX model
+    onnx_model = onnx.load(onnx_model_path)
+
+    # Convert the ONNX model to PyTorch
+    pytorch_model = ConvertModel(onnx_model)
+
+    # Save the PyTorch model
+    torch.save(pytorch_model.state_dict(), pytorch_model_path)
+
+
+def convert_tf_to_pytorch(tf_model_path, pytorch_model_path):
+    convert_tf_to_onnx(tf_model_path, "onnx_model")
+    convert_onnx_to_pytorch("onnx_model", pytorch_model_path)
+    
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <tensorflow_model_path> <pytorch_model_path>")
+        sys.exit(1)
+
+    tf_model_path = sys.argv[1]
+    pytorch_model_path = sys.argv[2]
+
+    convert_tf_to_pytorch(tf_model_path, pytorch_model_path)

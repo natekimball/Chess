@@ -102,6 +102,7 @@ mod tests {
         let mut game = Game::new();
         game.set_pieces(vec![(3,3)], vec![]);
         game.set_board(board);
+        game.set_model(None);
 
         println!("{game}");
 

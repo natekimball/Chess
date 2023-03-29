@@ -153,6 +153,8 @@ mod tests {
         let mut game = Game::new();
         game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
+        game.set_model(None);
+        game.set_model(None);
 
         print!("{game}");
 
@@ -183,6 +185,7 @@ mod tests {
         let mut game = Game::new();
         game.set_pieces(vec![(2,7),(4,7),(6,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
+        game.set_model(None);
 
         print!("{game}");
 
@@ -208,6 +211,7 @@ mod tests {
         let mut game = Game::new();
         game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(3,5)]);
         game.set_board(board);
+        game.set_model(None);
 
         print!("{game}");
 
