@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{sync::Arc};
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 #[derive(Clone)]

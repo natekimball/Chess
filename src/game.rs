@@ -1,24 +1,10 @@
-use crate::{
-    bishop::Bishop,
-    king::King,
-    knight::Knight,
-    pawn::Pawn,
-    piece::{Construct, Move, Piece},
-    player::Player,
-    queen::Queen,
-    rook::Rook,
-    model::Model,
-};
+use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model };
 use colored::Colorize;
-use std::{
-    cmp::{max, min},
-    fmt::{Display, Error, Formatter},
-    io, rc::Rc, thread,
-};
-use tensorflow::{Graph, SavedModelBundle, SessionOptions};
+use std::{ cmp::{max, min}, fmt::{Display, Error, Formatter}, io, thread };
 
 pub type Square = Option<Box<dyn Piece>>;
 pub type Board = Vec<Vec<Square>>;
+const NUM_THREADS: usize = 4;
 
 #[derive(Clone)]
 pub struct Game {
@@ -54,14 +40,14 @@ impl Game {
         board[6] = vec![Some(Box::new(Pawn::new(Player::One))); 8];
 
         let args: Vec<String> = std::env::args().collect();
-        let two_player = args.contains(&String::from("--two-player"));
+        let two_player = args.contains(&String::from("--2p"));
         let (model, computer_player);
         if two_player {
             model = None;
             computer_player = None;
         } else {
             model = Some(Model::new());
-            computer_player = if args.contains(&String::from("--p2")) {Some(Player::One)} else {Some(Player::Two)};
+            computer_player = if args.contains(&String::from("--black")) {Some(Player::One)} else {Some(Player::Two)};
         };
 
         Game {
@@ -104,24 +90,26 @@ impl Game {
             game2.move_piece(from2, to2);
             game2.evaluate().partial_cmp(&game1.evaluate()).unwrap()
         });
-
-        let possible_moves = possible_moves.into_iter().take(10).collect::<Vec<((u8,u8),(u8,u8))>>();
-
-        let mut threads = Vec::with_capacity(10);
-        for (from, to) in possible_moves.clone() {
-            let mut game = self.clone();
-            threads.push(thread::spawn(move || {
-                game.move_piece(from, to);
-                ((from,to),game.minimax(2, false, f32::MIN, f32::MAX))
-            }));
-        }
+        
         let mut best_move = possible_moves[0];
         let mut best_score = f32::MIN;
-        for thread in threads {
-            let (mov,score) = thread.join().unwrap();
-            if score > best_score {
-                best_score = score;
-                best_move = mov;
+        // let possible_moves = possible_moves.into_iter().take(8).collect::<Vec<((u8,u8),(u8,u8))>>();
+        for i in 0..=(possible_moves.len()/NUM_THREADS) {
+            let mut threads = Vec::with_capacity(8);
+            let moves = possible_moves.clone().into_iter().skip(i*NUM_THREADS).take(NUM_THREADS).collect::<Vec<((u8,u8),(u8,u8))>>();
+            for (from, to) in moves {
+                let mut game = self.clone();
+                threads.push(thread::spawn(move || {
+                    game.move_piece(from, to);
+                    ((from,to),game.minimax(2, false, f32::MIN, f32::MAX))
+                }));
+            }
+            for thread in threads {
+                let (mov,score) = thread.join().unwrap();
+                if score > best_score {
+                    best_score = score;
+                    best_move = mov;
+                }
             }
         }
         best_move
