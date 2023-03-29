@@ -108,7 +108,7 @@ impl Game {
             for to in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                println!("{}: {:?} -> {:?}", game.evaluate(), from, to);
+                println!("{:?} -> {:?}: {}", from, to, game.evaluate());
                 let score = game.minimax(3, false, f32::MIN, f32::MAX);
                 if score > best_score {
                     best_score = score;
