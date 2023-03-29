@@ -1,10 +1,10 @@
 # Chess
 
-Chess game written in Rust complete with all the rules of chess, including castling, en passant, pawn promotion, check/checkmate detection, and the fifty-move rule. The game allows you to play against another player or our custom AI chess algorithm.
+AI Chess game written in Rust complete with all the rules of chess, including castling, en passant, pawn promotion, check/checkmate detection, and the fifty-move rule. The game allows you to play against another player or our custom AI chess algorithm.
 
 ## Play
 
-AI gameplay
+AI gameplay (to play against AI, you must first train the model, see below)
 
 ```shell
 cargo run
