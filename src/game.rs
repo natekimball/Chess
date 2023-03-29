@@ -13,7 +13,7 @@ use colored::Colorize;
 use std::{
     cmp::{max, min},
     fmt::{Display, Error, Formatter},
-    io, rc::Rc,
+    io, rc::Rc, thread,
 };
 use tensorflow::{Graph, SavedModelBundle, SessionOptions};
 
@@ -90,34 +90,38 @@ impl Game {
     }
 
     fn get_best_move(&mut self) -> ((u8, u8), (u8, u8)) {
-        let possible_moves = self.get_possible_moves(self.current_player);
+        let mut possible_moves = self.get_possible_moves(self.current_player);
         if possible_moves.is_empty() {
             print!("No possible moves for player {}!", self.current_player);
             self.game_over = true;
             panic!("Stalemate!");
         }
-        /*
-        possible_moves.iter().sort(|(from, to)| {
-            let mut game = self.clone();
-            game.move_piece(*from, *to);
-            game.evaluate()
+
+        possible_moves.sort_by(|&(from1,to1),&(from2, to2)| {
+            let mut game1 = self.clone();
+            let mut game2 = self.clone();
+            game1.move_piece(from1, to1);
+            game2.move_piece(from2, to2);
+            game2.evaluate().partial_cmp(&game1.evaluate()).unwrap()
         });
 
-        possible_moves.reverse();
-        possible_moves.iter().take(10).collect();
-         */
-        let mut best_move = (possible_moves[0].0, possible_moves[0].1[0]);
-        let mut best_score = f32::MIN;
-        for (from, moves) in possible_moves {
-            for to in moves {
-                let mut game = self.clone();
+        let possible_moves = possible_moves.into_iter().take(10).collect::<Vec<((u8,u8),(u8,u8))>>();
+
+        let mut threads = Vec::with_capacity(10);
+        for (from, to) in possible_moves.clone() {
+            let mut game = self.clone();
+            threads.push(thread::spawn(move || {
                 game.move_piece(from, to);
-                // println!("{}: {:?} -> {:?}", game.evaluate(), from, to);
-                let score = game.minimax(2, false, f32::MIN, f32::MAX);
-                if score > best_score {
-                    best_score = score;
-                    best_move = (from, to);
-                }
+                ((from,to),game.minimax(2, false, f32::MIN, f32::MAX))
+            }));
+        }
+        let mut best_move = possible_moves[0];
+        let mut best_score = f32::MIN;
+        for thread in threads {
+            let (mov,score) = thread.join().unwrap();
+            if score > best_score {
+                best_score = score;
+                best_move = mov;
             }
         }
         best_move
@@ -912,15 +916,15 @@ impl Game {
         self.get_possible_moves(self.current_player).is_empty()
     }
 
-    pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8, u8), Vec<(u8, u8)>)> {
+    pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8,u8),(u8,u8))> {//-> Vec<((u8, u8), Vec<(u8, u8)>)> {
         let mut moves = Vec::new();
         for position in self.get_pieces(player).clone() {
             let piece = self.get(position).expect("Piece not found!");
             let piece_moves = piece.get_legal_moves(position, self);
-            if !piece_moves.is_empty() {
-                moves.push((position, piece_moves));
-            }
-            // moves.extend(moves.iter().map(|x| (position, *x))); -> Vec<((u8,u8),(u8,u8))>>
+            // if !piece_moves.is_empty() {
+            //     moves.push((position, piece_moves));
+            // }
+            moves.extend(piece_moves.iter().map(|&x| (position, x)));
         }
         moves
     }

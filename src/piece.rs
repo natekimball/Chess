@@ -6,7 +6,7 @@ use std::{
 use crate::game::Game;
 use crate::player::Player;
 
-pub trait Piece: Display + DynClone {
+pub trait Piece: Display + DynClone + Send + Sync {
     fn valid_move(&self, from: (u8, u8), to: (u8, u8), game: &mut Game) -> Move;
     fn get_legal_moves(&self, position: (u8, u8), game: &mut Game) -> Vec<(u8, u8)>;
     fn player(&self) -> Player;

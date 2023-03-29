@@ -1,12 +1,12 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 #[derive(Clone)]
 pub struct Model {
     pred_input_parameter_name: String,
     pred_output_parameter_name: String,
-    graph: Rc<Graph>,
-    bundle: Rc<SavedModelBundle>,
+    graph: Arc<Graph>,
+    bundle: Arc<SavedModelBundle>,
 }
 
 impl Model {
@@ -22,8 +22,8 @@ impl Model {
         Self {
             pred_input_parameter_name,
             pred_output_parameter_name,
-            graph: Rc::new(graph),
-            bundle: Rc::new(bundle),
+            graph: Arc::new(graph),
+            bundle: Arc::new(bundle),
         }
     }
 
