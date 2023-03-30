@@ -15,7 +15,7 @@ test:
 %.pb:
 	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
 
-tf_saved_model:
+saved_model:
 	scp -r tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
 
 %.pt:

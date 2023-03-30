@@ -1,9 +1,8 @@
 import numpy as np
 import sys
-import onnx
-import torch
-from onnx2pytorch import ConvertModel
-import tf2onnx
+# import onnx
+# import torch
+import tensorflow as tf
 
 def fen_to_mat(fen):
     mat = np.zeros((13, 8, 8), dtype=np.int8)
@@ -97,10 +96,10 @@ def evaluation_to_int(evaluation):
     return int(evaluation)/10
 
 def save_frozen(model):
-    infer = loaded.signatures['serving_default']
+    infer = model.signatures['serving_default']
 
     # Convert the SavedModel to a frozen graph
-    frozen_func = convert_variables_to_constants_v2(infer)
+    frozen_func = tf.convert_variables_to_constants_v2(infer)
     frozen_func.graph.as_graph_def()
 
     # Save the frozen graph to a .pb file

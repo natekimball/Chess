@@ -5,6 +5,8 @@ use std::{ cmp::{max, min}, fmt::{Display, Error, Formatter}, io, thread };
 pub type Square = Option<Box<dyn Piece>>;
 pub type Board = Vec<Vec<Square>>;
 const NUM_THREADS: usize = 4;
+const SEARCH_BREADTH: usize = 16;
+const SEARCH_DEPTH: u8 = 4;
 
 #[derive(Clone)]
 pub struct Game {
@@ -83,12 +85,15 @@ impl Game {
             panic!("Stalemate!");
         }
 
-        self.sort_moves(&mut possible_moves);
+        if possible_moves.len() > SEARCH_BREADTH + 8 {
+            // TODO: evaluate all moves in one batch for max efficiency
+            self.sort_moves(&mut possible_moves);
+            // reduce with better evaluation accuracy
+            possible_moves = possible_moves.into_iter().take(SEARCH_BREADTH).collect::<Vec<((u8,u8),(u8,u8))>>();
+        }
         
         let mut best_move = possible_moves[0];
         let mut best_score = f32::MIN;
-        // reduce with better evaluation accuracy
-        let possible_moves = possible_moves.into_iter().take(32).collect::<Vec<((u8,u8),(u8,u8))>>();
         for i in 0..=(possible_moves.len()/NUM_THREADS) {
             let mut threads = Vec::with_capacity(8);
             let moves = possible_moves.clone().into_iter().skip(i*NUM_THREADS).take(NUM_THREADS).collect::<Vec<((u8,u8),(u8,u8))>>();
@@ -97,7 +102,7 @@ impl Game {
                 threads.push(thread::spawn(move || {
                     game.move_piece(from, to);
                     // ((from,to),game.minimax(3, false, f32::MIN, f32::MAX))
-                    ((from,to),game.tree_search(3, false, f32::MIN, f32::MAX))
+                    ((from,to),game.tree_search(SEARCH_DEPTH-1, false, f32::MIN, f32::MAX))
                 }));
             }
             for thread in threads {
