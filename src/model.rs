@@ -27,16 +27,18 @@ impl Model {
         }
     }
 
-    pub fn run_inference(&self, input_data: [[[u8; 8]; 8]; 13]) -> Result<f32, Box<dyn std::error::Error>> {
-        let input_tensor: Tensor<f32> = Tensor::new(&[1,13,8,8]).with_values(&input_data.into_iter().flatten().flatten().map(|u| u as f32).collect::<Vec<f32>>()).unwrap();
+    pub fn run_inference(&mut self, input_data: Vec<[[[f32; 8]; 8]; 13]>) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let len = input_data.len() as u64;
+        let data = input_data.clone().into_iter().flatten().flatten().flatten().collect::<Vec<f32>>();
+        let input_tensor: Tensor<f32> = Tensor::new(&[len,13,8,8]).with_values(&data)?;
 
         let session = &self.bundle.session;
 
-        let signature_train = self.bundle.meta_graph_def().get_signature("serving_default").unwrap();
-        let input_info_pred = signature_train.get_input(self.pred_input_parameter_name.as_str()).unwrap();
-        let output_info_pred = signature_train.get_output(self.pred_output_parameter_name.as_str()).unwrap();
-        let input_op_pred = self.graph.operation_by_name_required(&input_info_pred.name().name).unwrap();
-        let output_op_pred = self.graph.operation_by_name_required(&output_info_pred.name().name).unwrap();
+        let signature_train = self.bundle.meta_graph_def().get_signature("serving_default")?;
+        let input_info_pred = signature_train.get_input(self.pred_input_parameter_name.as_str())?;
+        let output_info_pred = signature_train.get_output(self.pred_output_parameter_name.as_str())?;
+        let input_op_pred = self.graph.operation_by_name_required(&input_info_pred.name().name)?;
+        let output_op_pred = self.graph.operation_by_name_required(&output_info_pred.name().name)?;
     
         let mut args = SessionRunArgs::new();
         args.add_feed(&input_op_pred, 0, &input_tensor);
@@ -48,12 +50,9 @@ impl Model {
         .expect("Error occurred during inference");
     
         let prediction = args.fetch(out)?;
-    
         // println!("data : {:?}", input_tensor);
         println!("Prediction: {:?}", prediction);
         
-        Ok(prediction[0])
+        Ok(prediction.to_vec())
     }
 }
-
-// https://github.com/Grimmp/RustTensorFlowTraining
