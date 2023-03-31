@@ -1,4 +1,4 @@
-use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model };
+use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model, cache::Cache };
 use colored::Colorize;
 use rayon::prelude::*;
 use std::{ cmp::{max, min}, fmt::{Display, Error, Formatter}, io, thread };
@@ -32,7 +32,8 @@ pub struct Game {
     in_simulation: bool,
     two_player: bool,
     model: Option<Model>,
-    computer_player: Option<Player>
+    computer_player: Option<Player>,
+    cache: Cache
 }
 
 impl Game {
@@ -76,7 +77,8 @@ impl Game {
             in_simulation: false,
             two_player,
             model,
-            computer_player
+            computer_player,
+            cache: Cache::new()
         }
     }
 
@@ -965,13 +967,50 @@ impl Game {
 
     fn evaluate_moves(&mut self, moves: &Vec<((u8,u8),(u8,u8))>) -> Vec<f32> {
         // check if par_iter is actually faster
-        let games = moves.iter().map(|&(from, to)| {
+        let games: Vec<[[[f32;8];8];13]> = moves.iter().map(|&(from, to)| {
             let mut game = self.clone();
             game.move_piece(from, to);
             game.to_matrix()
-        }).collect::<Vec<[[[f32;8];8];13]>>();
+        }).collect();
 
-        self.model.clone().unwrap().run_inference(games).unwrap()
+        let mut cached = Vec::with_capacity(games.len());
+        for (i,&game) in games.iter().enumerate() {
+            if let Some(eval) = self.cache.get(game) {
+                cached.push((i,eval));
+            }
+        }
+
+        let mut j = 0;
+        let uncached_games = games.iter().enumerate().filter(|(i,_)| {
+            if j < cached.len() && cached[j].0 == *i {
+                j += 1;
+                false
+            } else {
+                true
+            }
+        }).map(|(_,game)| game).cloned().collect();
+
+        let uncached_evals = self.model.clone().unwrap().run_inference(uncached_games).unwrap();
+
+        j = 0;
+        for i in 0..games.len() {
+            if j < cached.len() && cached[j].0 == i {
+                j += 1;
+                continue;
+            }
+            self.cache.insert(games[i], uncached_evals[i - j]);
+        }
+
+        j = 0;
+        games.iter().enumerate().map(|(i,_)| {
+            if j < cached.len() && cached[j].0 == i {
+                j += 1;
+                cached[j].1
+            } else {
+                uncached_evals[i - j]
+            }
+        }).collect()
+        // self.model.clone().unwrap().run_inference(games).unwrap()
     }
 
     fn get_moves_sorted(&mut self) -> Vec<((u8,u8),(u8, u8))> {
