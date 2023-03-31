@@ -9,9 +9,11 @@ from sklearn.model_selection import train_test_split
 from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 import util
 
-skiprows = 0
-nrows = 100000
-data = pd.read_csv('data/chessData.csv', nrows) #12958036 total lines
+# skiprows = 0
+# nrows = 50000
+skiprows = 50000
+nrows = 50000
+data = pd.read_csv('data/chessData.csv', skiprows=skiprows, nrows=nrows) #12958036 total lines
 # data.columns = ['FEN', 'Evaluation']
 print(f"rows {skiprows}-{nrows+skiprows}")
 
@@ -28,57 +30,57 @@ epochs = 30
 batch_size = 64
 
 # model params
-# input_shape = (13, 8, 8)
-# num_filters = 256
-# num_residual_blocks = 12
+input_shape = (13, 8, 8)
+num_filters = 256
+num_residual_blocks = 12
 
-# def build_residual_block(inputs, filters):
-#     x = tf.keras.layers.Conv2D(filters, 3, padding='same', use_bias=False)(inputs)
-#     x = tf.keras.layers.BatchNormalization()(x)
-#     x = tf.keras.layers.ReLU()(x)
-#     x = tf.keras.layers.Conv2D(filters, 3, padding='same', use_bias=False)(x)
-#     x = tf.keras.layers.BatchNormalization()(x)
-#     x = tf.keras.layers.Add()([x, inputs])
-#     x = tf.keras.layers.ReLU()(x)
-#     return x
+def build_residual_block(inputs, filters):
+    x = tf.keras.layers.Conv2D(filters, 3, padding='same', use_bias=False)(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Conv2D(filters, 3, padding='same', use_bias=False)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Add()([x, inputs])
+    x = tf.keras.layers.ReLU()(x)
+    return x
 
-# def build_value_head(inputs):
-#     x = tf.keras.layers.Conv2D(1, 1, use_bias=False)(inputs)
-#     x = tf.keras.layers.BatchNormalization()(x)
-#     x = tf.keras.layers.ReLU()(x)
-#     x = tf.keras.layers.Flatten()(x)
-#     x = tf.keras.layers.Dense(256, use_bias=False)(x)
-#     x = tf.keras.layers.BatchNormalization()(x)
-#     x = tf.keras.layers.ReLU()(x)
-#     x = tf.keras.layers.Dense(1, activation='tanh', name='value')(x)
-#     return x
+def build_value_head(inputs):
+    x = tf.keras.layers.Conv2D(1, 1, use_bias=False)(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(256, use_bias=False)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Dense(1, activation='tanh', name='value')(x)
+    return x
 
-# def build_model(input_shape, num_filters, num_residual_blocks):
-#     inputs = tf.keras.layers.Input(shape=input_shape)
-#     x = tf.keras.layers.Conv2D(num_filters, 3, padding='same', use_bias=False)(inputs)
-#     x = tf.keras.layers.BatchNormalization()(x)
-#     x = tf.keras.layers.ReLU()(x)
-#     for _ in range(num_residual_blocks):
-#         x = build_residual_block(x, 256)
-#     value_head = build_value_head(x)
-#     model = tf.keras.Model(inputs=inputs, outputs=value_head)
-#     return model
+def build_model(input_shape, num_filters, num_residual_blocks):
+    inputs = tf.keras.layers.Input(shape=input_shape)
+    x = tf.keras.layers.Conv2D(num_filters, 3, padding='same', use_bias=False)(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+    for _ in range(num_residual_blocks):
+        x = build_residual_block(x, 256)
+    value_head = build_value_head(x)
+    model = tf.keras.Model(inputs=inputs, outputs=value_head)
+    return model
 
-# # learning_rate = 5e-4
-# initial_learning_rate = 1e-3
-# decay_rate = 0.96
-# decay_steps = len(X)*.9 // batch_size
+# learning_rate = 5e-4
+initial_learning_rate = 1e-3
+decay_rate = 0.96
+decay_steps = len(X)*.9 // batch_size
 
-# # Create the ExponentialDecay scheduler
-# lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-#     initial_learning_rate,
-#     decay_steps,
-#     decay_rate,
-#     staircase=True,
-# )
+# Create the ExponentialDecay scheduler
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate,
+    decay_steps,
+    decay_rate,
+    staircase=True,
+)
 
-# # Create an optimizer using the scheduler
-# optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+# Create an optimizer using the scheduler
+optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, min_lr=1e-6)

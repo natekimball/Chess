@@ -11,6 +11,7 @@
 #SBATCH --reservation=bi_fox_dgx
 #SBATCH --constraint=a100_80gb
 
+date
 nvidia-smi
 module load anaconda
 module load cuda/11.4.2
@@ -18,5 +19,6 @@ module load cudatoolkit
 conda activate chess
 pip install -r ../requirements.txt
 time python train.py
+date
 # pip install onnx
 # make convert
