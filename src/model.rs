@@ -54,8 +54,8 @@ impl Model {
         let prediction = args.fetch(out)?;
         // println!("data : {:?}", input_tensor);
         let elapsed = now.elapsed().unwrap();
-        println!("time to inference {len} inputs : {:?}, {}ms/inf", elapsed, elapsed.as_millis() / len as u128);
-        println!("Prediction: {:?}", prediction);
+        println!("time to inference {len} inputs: {:?}, {}ms/inf", elapsed, elapsed.as_millis() / len as u128);
+        // println!("Prediction: {:?}", prediction);
         
         Ok(prediction.to_vec())
     }

@@ -93,9 +93,11 @@ model.compile(optimizer=optimizer, loss='mse', metrics='mae')
 
 model.summary()
 
-# print(model.predict(X[:10]))
+print(model.predict(X[:10]))
 
 history = model.fit(X, y, epochs=epochs, batch_size=batch_size, validation_split=0.1, callbacks=[reduce_lr, early_stopping])
+
+print(model.predict(X[:10]))
 
 model.save('saved_model')
 

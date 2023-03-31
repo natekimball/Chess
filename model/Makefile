@@ -12,8 +12,8 @@ results:
 	find . -name "*.out" | while read file; \
 	do if fgrep val_loss "$$file" >nul; \
 	then echo $$file; \
-	fgrep "EDT 2023" $$file; \
-	fgrep val_loss $$file; \
+	fgrep "EDT 2023" $$file | head -1; \
+	grep val_loss $$file; \
 	fgrep Epoch $$file | tail -1; \
 	tail -1 $$file; fi; \
 	done; echo
