@@ -980,6 +980,10 @@ impl Game {
             }
         }
 
+        if cached.len() == 0 {
+            return self.model.clone().unwrap().run_inference(games).unwrap();
+        }
+
         let mut j = 0;
         let uncached_games = games.iter().enumerate().filter(|(i,_)| {
             if j < cached.len() && cached[j].0 == *i {
