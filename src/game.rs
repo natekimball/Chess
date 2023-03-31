@@ -84,7 +84,7 @@ impl Game {
 
     fn get_best_move(&mut self) -> ((u8, u8), (u8, u8)) {
         let now = std::time::SystemTime::now();
-        let possible_moves = self.get_moves_sorted();
+        let possible_moves = self.get_moves_sorted(true);
         if possible_moves.is_empty() {
             print!("No possible moves for player {}!", self.current_player);
             self.game_over = true;
@@ -92,7 +92,7 @@ impl Game {
         }
         let mut best_move = possible_moves[0];
         let mut best_score = f32::MIN;
-        for i in 0..(possible_moves.len()/NUM_THREADS) {
+        for i in 0..=(possible_moves.len()/NUM_THREADS) {
             let mut threads = Vec::with_capacity(8);
             let moves = possible_moves.clone().into_iter().skip(i*NUM_THREADS).take(NUM_THREADS).collect::<Vec<((u8,u8),(u8,u8))>>();
             for (from, to) in moves {
@@ -159,7 +159,7 @@ impl Game {
         if depth <= 1 {
             return self.last_level_minimax(maximizing, alpha, beta);
         }
-        let moves = self.get_moves_sorted();
+        let moves = self.get_moves_sorted(maximizing);
         // if depth == 0 {
         //     return self.evaluate();
         // }
@@ -1019,16 +1019,18 @@ impl Game {
         // self.model.clone().unwrap().run_inference(games).unwrap()
     }
 
-    fn get_moves_sorted(&mut self) -> Vec<((u8,u8),(u8, u8))> {
+    fn get_moves_sorted(&mut self, descending: bool) -> Vec<((u8,u8),(u8, u8))> {
         let moves = self.get_possible_moves(self.current_player);  
         if moves.len() < (SEARCH_BREADTH as f32 * 1.25) as usize {
             return moves;
         }
         let evals = self.evaluate_moves(&moves);
         let mut move_evals = moves.into_iter().zip(evals.into_iter()).collect::<Vec<(((u8,u8),(u8,u8)),f32)>>();
-        move_evals.par_sort_by(|&(_, eval1), &(_, eval2)| {
-            eval2.partial_cmp(&eval1).unwrap()
-        });
+        if descending {
+            move_evals.sort_by(|a,b| b.1.partial_cmp(&a.1).unwrap());
+        } else {
+            move_evals.sort_by(|a,b| a.1.partial_cmp(&b.1).unwrap());
+        }
         move_evals.iter().map(|&(mov, _)| mov).take(SEARCH_BREADTH).collect::<Vec<((u8,u8),(u8,u8))>>()
     }
 
