@@ -160,10 +160,6 @@ impl Game {
             return self.last_level_minimax(maximizing, alpha, beta);
         }
         let moves = self.get_moves_sorted(maximizing);
-        // if depth == 0 {
-        //     return self.evaluate();
-        // }
-
         if maximizing {
             let mut best = f32::MIN;
             for (from, to) in moves {
@@ -442,9 +438,9 @@ impl Game {
         }
         // for every enemy that can attack king {
         //         for every square in path from enemy to king {
-            //                 for every friendly piece {
-                //                         if friendly piece can move to square {
-                    //                                 return false;
+        //                     for every friendly piece {
+        //                                 if friendly piece can move to square {
+        //                                             return false;
         //                         }
         //                 }
         //         }
@@ -947,7 +943,7 @@ impl Game {
         self.get_possible_moves(self.current_player).is_empty()
     }
 
-    pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8,u8),(u8,u8))> {//-> Vec<((u8, u8), Vec<(u8, u8)>)> {
+    pub fn get_possible_moves(&mut self, player: Player) -> Vec<((u8,u8),(u8,u8))> {
         let mut moves = Vec::new();
         for position in self.get_pieces(player).clone() {
             let piece = self.get(position).expect("Piece not found!");
@@ -983,7 +979,11 @@ impl Game {
         }
 
         if cached.len() == 0 {
-            return self.model.clone().unwrap().run_inference(games).unwrap();
+            let evals = self.model.clone().unwrap().run_inference(&games).unwrap();
+            (0..evals.len()).for_each(|i| {
+                self.cache.insert(games[i], evals[i]);
+            });
+            return evals;
         }
 
         let mut j = 0;
@@ -996,7 +996,7 @@ impl Game {
             }
         }).map(|(_,game)| game).cloned().collect();
 
-        let uncached_evals = self.model.clone().unwrap().run_inference(uncached_games).unwrap();
+        let evals = self.model.clone().unwrap().run_inference(&uncached_games).unwrap();
 
         j = 0;
         for i in 0..games.len() {
@@ -1004,7 +1004,7 @@ impl Game {
                 j += 1;
                 continue;
             }
-            self.cache.insert(games[i], uncached_evals[i - j]);
+            self.cache.insert(games[i], evals[i - j]);
         }
 
         j = 0;
@@ -1013,7 +1013,7 @@ impl Game {
                 j += 1;
                 cached[j].1
             } else {
-                uncached_evals[i - j]
+                evals[i - j]
             }
         }).collect()
         // self.model.clone().unwrap().run_inference(games).unwrap()
@@ -1021,9 +1021,6 @@ impl Game {
 
     fn get_moves_sorted(&mut self, descending: bool) -> Vec<((u8,u8),(u8, u8))> {
         let moves = self.get_possible_moves(self.current_player);  
-        if moves.len() < (SEARCH_BREADTH as f32 * 1.25) as usize {
-            return moves;
-        }
         let evals = self.evaluate_moves(&moves);
         let mut move_evals = moves.into_iter().zip(evals.into_iter()).collect::<Vec<(((u8,u8),(u8,u8)),f32)>>();
         if descending {
@@ -1034,7 +1031,7 @@ impl Game {
         move_evals.iter().map(|&(mov, _)| mov).take(SEARCH_BREADTH).collect::<Vec<((u8,u8),(u8,u8))>>()
     }
 
-    // pub fn from_matrix(matrix: [[[f32; 8]; 8]; 13]) -> Self {
+    // pub fn from_fen(fen: String) -> Self {
     //     // TODO
     //     Self {
     //         board: vec![vec![None; 8]; 8],

@@ -27,7 +27,8 @@ impl Model {
         }
     }
 
-    pub fn run_inference(&mut self, input_data: Vec<[[[f32; 8]; 8]; 13]>) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    pub fn run_inference(&mut self, input_data: &Vec<[[[f32; 8]; 8]; 13]>) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+
         let len = input_data.len() as u64;
         let now = std::time::SystemTime::now();
 
