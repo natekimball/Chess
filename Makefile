@@ -3,6 +3,9 @@ run-rivanna:
 	module load rust/1.66.1; \
 	cargo run --release
 
+job:
+	ijob -c 1 -A bii_dsc_community -p standard --time=01:00:00 --partition=bii-gpu --mem-per-cpu=256G --gres=gpu:v100
+
 run:
 	cargo run --release
 
