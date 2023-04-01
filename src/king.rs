@@ -63,7 +63,7 @@ impl Piece for King {
     }
 
     fn value(&self) -> i32 {
-        100
+        0
     }
 }
 
