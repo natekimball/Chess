@@ -81,16 +81,16 @@ impl Game {
     }
 
     fn get_best_move(&mut self) -> ((u8, u8), (u8, u8)) {
+        let now = std::time::SystemTime::now();
         let possible_moves = self.get_moves_sorted();
         if possible_moves.is_empty() {
             print!("No possible moves for player {}!", self.current_player);
             self.game_over = true;
             panic!("Stalemate!");
         }
-        
         let mut best_move = possible_moves[0];
         let mut best_score = f32::MIN;
-        for i in 0..=(possible_moves.len()/NUM_THREADS) {
+        for i in 0..(possible_moves.len()/NUM_THREADS) {
             let mut threads = Vec::with_capacity(8);
             let moves = possible_moves.clone().into_iter().skip(i*NUM_THREADS).take(NUM_THREADS).collect::<Vec<((u8,u8),(u8,u8))>>();
             for (from, to) in moves {
@@ -108,6 +108,8 @@ impl Game {
                 }
             }
         }
+        let elapsed = now.elapsed().unwrap();
+        println!("Time to evaluate best move to depth of {SEARCH_DEPTH}: {:?}", elapsed);
         best_move
     }
 
@@ -1075,7 +1077,7 @@ impl Display for Game {
 }
 
 fn coord_to_pos(coord: (u8,u8)) -> String {
-    format!("{}{}", (coord.0 + 'a' as u8) as char, (coord.1 + '8' as u8) as char)
+    format!("{}{}", (coord.0 + 'a' as u8) as char, ('8' as u8 - coord.1) as char)
 }
 
 #[cfg(test)]

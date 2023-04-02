@@ -29,6 +29,8 @@ impl Model {
 
     pub fn run_inference(&mut self, input_data: Vec<[[[f32; 8]; 8]; 13]>) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
         let len = input_data.len() as u64;
+        let now = std::time::SystemTime::now();
+
         let data = input_data.clone().into_iter().flatten().flatten().flatten().collect::<Vec<f32>>();
         let input_tensor: Tensor<f32> = Tensor::new(&[len,13,8,8]).with_values(&data)?;
 
@@ -51,7 +53,9 @@ impl Model {
     
         let prediction = args.fetch(out)?;
         // println!("data : {:?}", input_tensor);
-        println!("Prediction: {:?}", prediction);
+        let elapsed = now.elapsed().unwrap();
+        println!("time to inference {len} inputs: {:?}, {}ms/inf", elapsed, elapsed.as_millis() / len as u128);
+        // println!("Prediction: {:?}", prediction);
         
         Ok(prediction.to_vec())
     }
