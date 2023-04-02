@@ -9,6 +9,7 @@ mod knight;
 mod pawn;
 mod player;
 mod model;
+mod cache;
 
 // use std::process::Command;
 use game::Game;

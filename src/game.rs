@@ -1,4 +1,4 @@
-use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model };
+use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model, cache::Cache };
 use colored::Colorize;
 use rayon::prelude::*;
 use std::{ cmp::{max, min}, fmt::{Display, Error, Formatter}, io, thread };
@@ -32,7 +32,8 @@ pub struct Game {
     in_simulation: bool,
     two_player: bool,
     model: Option<Model>,
-    computer_player: Option<Player>
+    computer_player: Option<Player>,
+    cache: Cache
 }
 
 impl Game {
@@ -76,7 +77,8 @@ impl Game {
             in_simulation: false,
             two_player,
             model,
-            computer_player
+            computer_player,
+            cache: Cache::new()
         }
     }
 
@@ -155,8 +157,7 @@ impl Game {
     fn tree_search(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
         // the algorithm assumes a good evaluation function to approximate game state evaluations
         if depth <= 1 {
-            let moves = self.get_possible_moves(self.current_player);
-            return self.last_level_optimized(&moves, maximizing, alpha, beta);
+            return self.last_level_minimax(maximizing, alpha, beta);
         }
         let moves = self.get_moves_sorted();
         // if depth == 0 {
@@ -192,28 +193,15 @@ impl Game {
         }
     }
 
-    fn last_level_optimized(&mut self, moves: &Vec<((u8, u8), (u8, u8))>, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
-        let move_evals = self.eval_list_moves(moves);
-        if maximizing {
-            let mut best = f32::MIN;
-            for score in move_evals {
-                best = f32::max(best, score);
-                alpha = f32::max(alpha, score);
-                if beta <= alpha {
-                    break;
-                }
-            }
-            return best;
+    fn last_level_minimax(&mut self, maximizing: bool, alpha: f32, beta: f32) -> f32 {
+        let moves = self.get_possible_moves(self.current_player);
+        let move_evals = self.evaluate_moves(&moves);
+        if beta <= alpha {
+            move_evals[0]
+        } else if maximizing {
+            move_evals.iter().max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap().clone()
         } else {
-            let mut best = f32::MAX;
-            for score in move_evals {
-                best = f32::min(best, score);
-                beta = f32::min(beta, score);
-                if beta <= alpha {
-                    break;
-                }
-            }
-            return best;
+            move_evals.iter().min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap().clone()
         }
     }
 
@@ -324,7 +312,7 @@ impl Game {
         } else {
             self.set(to, piece.clone());
             self.set(from, None);
-        } 
+        }
         assert!(!self.player_in_check(), "Wait you can't put yourself in check!");
         self.set_last_double(None);
         match move_status {
@@ -443,16 +431,7 @@ impl Game {
     pub fn algorithm_move(&mut self) {
         self.in_simulation = true;
         let (from, to) = self.get_best_move();
-        println!("Player {} moved {} -> {} ", self.computer_player.unwrap().number(), coord_to_pos(from), coord_to_pos(to));
-        // let piece = self.get(to);
-        // if let Some(piece) = piece {
-        //     println!(
-        //         "Player {} took {}'s {}!",
-        //         self.current_player.number(),
-        //         self.current_player.other(),
-        //         piece.name()
-        //     );
-        // }
+        println!("Player {} moved {} -> {} ", self.computer_player.unwrap().number(), format_coord(from), format_coord(to));
         self.in_simulation = false;
         self.move_piece(from, to);
     }
@@ -988,15 +967,56 @@ impl Game {
         self.full_move_clock += 1;
     }
 
-    fn eval_list_moves(&mut self, moves: &Vec<((u8,u8),(u8,u8))>) -> Vec<f32> {
+    fn evaluate_moves(&mut self, moves: &Vec<((u8,u8),(u8,u8))>) -> Vec<f32> {
         // check if par_iter is actually faster
-        let games = moves.iter().map(|&(from, to)| {
+        let games: Vec<[[[f32;8];8];13]> = moves.iter().map(|&(from, to)| {
             let mut game = self.clone();
             game.move_piece(from, to);
             game.to_matrix()
-        }).collect::<Vec<[[[f32;8];8];13]>>();
+        }).collect();
 
-        self.model.clone().unwrap().run_inference(games).unwrap()
+        let mut cached = Vec::with_capacity(games.len());
+        for (i,&game) in games.iter().enumerate() {
+            if let Some(eval) = self.cache.get(game) {
+                cached.push((i,eval));
+            }
+        }
+
+        if cached.len() == 0 {
+            return self.model.clone().unwrap().run_inference(games).unwrap();
+        }
+
+        let mut j = 0;
+        let uncached_games = games.iter().enumerate().filter(|(i,_)| {
+            if j < cached.len() && cached[j].0 == *i {
+                j += 1;
+                false
+            } else {
+                true
+            }
+        }).map(|(_,game)| game).cloned().collect();
+
+        let uncached_evals = self.model.clone().unwrap().run_inference(uncached_games).unwrap();
+
+        j = 0;
+        for i in 0..games.len() {
+            if j < cached.len() && cached[j].0 == i {
+                j += 1;
+                continue;
+            }
+            self.cache.insert(games[i], uncached_evals[i - j]);
+        }
+
+        j = 0;
+        games.iter().enumerate().map(|(i,_)| {
+            if j < cached.len() && cached[j].0 == i {
+                j += 1;
+                cached[j].1
+            } else {
+                uncached_evals[i - j]
+            }
+        }).collect()
+        // self.model.clone().unwrap().run_inference(games).unwrap()
     }
 
     fn get_moves_sorted(&mut self) -> Vec<((u8,u8),(u8, u8))> {
@@ -1004,7 +1024,7 @@ impl Game {
         if moves.len() < (SEARCH_BREADTH as f32 * 1.25) as usize {
             return moves;
         }
-        let evals = self.eval_list_moves(&moves);
+        let evals = self.evaluate_moves(&moves);
         let mut move_evals = moves.into_iter().zip(evals.into_iter()).collect::<Vec<(((u8,u8),(u8,u8)),f32)>>();
         move_evals.par_sort_by(|&(_, eval1), &(_, eval2)| {
             eval2.partial_cmp(&eval1).unwrap()
@@ -1076,8 +1096,8 @@ impl Display for Game {
     }
 }
 
-fn coord_to_pos(coord: (u8,u8)) -> String {
-    format!("{}{}", (coord.0 + 'a' as u8) as char, ('8' as u8 - coord.1) as char)
+fn format_coord(coordinate: (u8,u8)) -> String {
+    format!("{}{}", (coordinate.0 + 'a' as u8) as char, ('8' as u8 - coordinate.1) as char)
 }
 
 #[cfg(test)]

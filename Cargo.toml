@@ -17,6 +17,7 @@ ndarray = "0.15.1"
 ndarray-rand = "0.14.0"
 clap = { version = "4.2.1", features = ["derive"] }
 rayon = "1.7.0"
+ordered-float = "3.6.0"
 # tch = "0.11.0"
 # js-sys = { version = "0.3.50", optional = true }
 # webpack = "0.1.0"
