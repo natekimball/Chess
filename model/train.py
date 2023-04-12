@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 import util
 
-skiprows = 180000
+skiprows = 90000
 nrows = 100000
 data = pd.read_csv('data/chessData.csv', nrows=nrows) #12958036 total lines
 # data.columns = ['FEN', 'Evaluation']
@@ -50,7 +50,7 @@ def build_value_head(inputs):
     x = tf.keras.layers.Dense(256, use_bias=False, kernel_initializer='he_normal')(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.ReLU()(x)
-    x = tf.keras.layers.Dense(1, activation='tanh', name='value', kernel_initializer='he_normal')(x)
+    x = tf.keras.layers.Dense(1, name='value', kernel_initializer='he_normal')(x)
     return x
 
 def build_model(input_shape, num_filters, num_residual_blocks):
@@ -83,8 +83,8 @@ model_checkpoint = ModelCheckpoint('best-model.{epoch:02d}-{val_loss:.2f}', save
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, min_lr=1e-6)
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
-# model = build_model(input_shape, num_filters, num_residual_blocks)
-model = load_model('saved_model_v2')
+model = build_model(input_shape, num_filters, num_residual_blocks)
+# model = load_model('saved_model_v2')
 
 model.compile(optimizer=optimizer, loss='mse', metrics='mae')
 
@@ -96,6 +96,6 @@ history = model.fit(X, y, epochs=epochs, batch_size=batch_size, validation_split
 
 print(model.predict(X[:10]))
 
-model.save('saved_model_v3.5')
+model.save('saved_model_v4')
 
 # util.save_frozen(model)
