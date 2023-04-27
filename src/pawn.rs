@@ -70,10 +70,10 @@ impl Piece for Pawn {
         }
         let diag = (x.abs() == 1) && (y == sign*1);
         if diag {
-            if game.square_is_opponent(to) {
+            if game.square_is_opponent(to, self.player) {
                 return Move::Normal;
             } else if let Some(last_move) = game.get_last_double() {
-                if to.0==last_move.0 && to.1==(end as i8) as u8 && game.square_is_opponent((to.0,(end as i8 - sign) as u8)) {
+                if to.0==last_move.0 && to.1==(end as i8) as u8 && game.square_is_opponent((to.0,(end as i8 - sign) as u8), self.player) {
                     return Move::EnPassant((to.0,(end as i8 - sign) as u8));
                 }
             } else {
