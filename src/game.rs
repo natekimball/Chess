@@ -1,6 +1,6 @@
 use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model, cache::Cache };
 use colored::Colorize;
-// use rayon::prelude::*;
+use rayon::prelude::*;
 use std::{ cmp::{max, min}, fmt::{Display, Error, Formatter}, io, thread };
 
 pub type Square = Option<Box<dyn Piece>>;
@@ -8,7 +8,7 @@ pub type Board = Vec<Vec<Square>>;
 // pub type Move = ((u8, u8), (u8, u8));
 const NUM_THREADS: usize = 4;
 const SEARCH_BREADTH: usize = 100;
-const SEARCH_DEPTH: u8 = 1;
+const SEARCH_DEPTH: u8 = 4;
 
 #[derive(Clone)]
 pub struct Game {
@@ -35,7 +35,7 @@ pub struct Game {
     model: Option<Model>,
     computer_player: Option<Player>,
     cache: Cache,
-    history: Vec<Game>,
+    // history: Vec<Game>,
 }
 
 impl Game {
@@ -81,7 +81,7 @@ impl Game {
             model,
             computer_player,
             cache: Cache::new(),
-            history: Vec::new(),
+            // history: Vec::new(),
         }
     }
 
@@ -115,11 +115,16 @@ impl Game {
         // }
         // best_move
         let possible_moves = self.get_possible_moves(self.current_player);
-        let best_move = possible_moves.iter().map(|(from, to)| {
+        let move_evals = possible_moves.par_iter().map(|(from, to)| {
             let mut game = self.clone();
             game.move_piece(*from, *to);
-            (from, to, game.tree_search(SEARCH_DEPTH-1, false, f32::MIN, f32::MAX))
-        }).max_by(|(_,_,a),(_,_,b)| a.partial_cmp(b).unwrap()).unwrap();
+            (from, to, game.tree_search(SEARCH_DEPTH-1, self.current_player == Player::Two, f32::MIN, f32::MAX))
+        });
+        let best_move = if self.current_player == Player::One {
+            move_evals.max_by(|(_,_,a),(_,_,b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)).unwrap()
+        } else {
+            move_evals.min_by(|(_,_,a),(_,_,b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)).unwrap()
+        };
         let elapsed = now.elapsed().unwrap();
         println!("Time to evaluate best move to depth of {SEARCH_DEPTH}: {:?}", elapsed);
         (*best_move.0, *best_move.1)
@@ -137,7 +142,7 @@ impl Game {
             for (from, to) in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                let score = game.tree_search(depth - 1, false, alpha, beta);
+                let score = game.tree_search(depth - 1, !maximizing, alpha, beta);
                 best = f32::max(best, score);
                 alpha = f32::max(alpha, score);
                 if beta <= alpha {
@@ -150,7 +155,7 @@ impl Game {
             for (from, to) in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                let score = game.tree_search(depth - 1, true, alpha, beta);
+                let score = game.tree_search(depth - 1, !maximizing, alpha, beta);
                 best = f32::min(best, score);
                 beta = f32::min(beta, score);
                 if beta <= alpha {
@@ -172,9 +177,11 @@ impl Game {
             game.get_piece_scores()
         });
         return if maximizing {
-            moves.max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap() as f32
+            // moves.max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap() as f32
+            moves.max().unwrap() as f32
         } else {
-            moves.min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap() as f32
+            // moves.min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap() as f32
+            moves.min().unwrap() as f32
         };
         // let move_evals = self.evaluate_moves(&moves);
         // if beta <= alpha {
@@ -279,7 +286,7 @@ impl Game {
             }
             break;
         }
-        self.history.push(self.clone());
+        // self.history.push(self.clone());
         if self.is_over() {
             println!("{self}");
             println!("{} wins!", self.current_player);
@@ -334,7 +341,7 @@ impl Game {
             self.half_move_clock = 0;
         }
         self.current_player = self.current_player.other();
-        self.history.push(self.clone());
+        // self.history.push(self.clone());
     }
     
     // fn evaluate(&mut self) -> f32 {
@@ -570,14 +577,14 @@ impl Game {
 
     pub(crate) fn take(&mut self, to: (u8, u8), new_piece: Square) {
         let piece = self.get(to).unwrap();
-        if piece.name() == "king" {
-            println!("to = {}", format_coord(to));
-            self.history.iter().for_each(|game| {
-                println!("{game}")
-            });
-            println!("{self}");
-            panic!("You can't take a king, something went wrong!");
-        }
+        // if piece.name() == "king" {
+        //     println!("to = {}", format_coord(to));
+        //     self.history.iter().for_each(|game| {
+        //         println!("{game}")
+        //     });
+        //     println!("{self}");
+        //     panic!("You can't take a king, something went wrong!");
+        // }
         if !self.in_simulation {
             println!(
                 "Player {} took {}'s {}!",
