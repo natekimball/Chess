@@ -570,9 +570,9 @@ impl Game {
         true
     }
 
-    pub(crate) fn square_is_opponent(&self, to: (u8, u8)) -> bool {
+    pub(crate) fn square_is_opponent(&self, to: (u8, u8), player: Player) -> bool {
         if let Some(piece) = self.get(to) {
-            piece.player() != self.current_player
+            piece.player() != player
         } else {
             false
         }
@@ -653,7 +653,7 @@ impl Game {
         let king = self.get_king(player);
         for position in self.get_pieces(player.other()).clone() {
             let piece = self.get(position).unwrap();
-            if piece.valid_move(position, king, self) != Move::Invalid {
+            if piece.valid_move(position, king, self).is_valid() {
                 return true;
             }
         }
