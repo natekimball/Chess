@@ -1,13 +1,13 @@
 use crate::{ bishop::Bishop, king::King, knight::Knight, pawn::Pawn, piece::{Construct, Move, Piece}, player::Player, queen::Queen, rook::Rook, model::Model, cache::Cache };
 use colored::Colorize;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 use std::{ cmp::{max, min}, fmt::{Display, Error, Formatter}, io, thread };
 
 pub type Square = Option<Box<dyn Piece>>;
 pub type Board = Vec<Vec<Square>>;
 const NUM_THREADS: usize = 4;
-const SEARCH_BREADTH: usize = 1000;
-const SEARCH_DEPTH: u8 = 3;
+const SEARCH_BREADTH: usize = 2 << 4;
+const SEARCH_DEPTH: u8 = 1;
 
 #[derive(Clone)]
 pub struct Game {
@@ -91,7 +91,7 @@ impl Game {
             panic!("Stalemate!");
         }
         let mut best_move = possible_moves[0];
-        let mut best_score = f32::MIN;
+        let mut best_score = if self.current_player == Player::One { f32::MIN } else { f32::MAX };
         for i in 0..=(possible_moves.len()/NUM_THREADS) {
             let mut threads = Vec::with_capacity(8);
             let moves = possible_moves.clone().into_iter().skip(i*NUM_THREADS).take(NUM_THREADS).collect::<Vec<((u8,u8),(u8,u8))>>();
@@ -104,56 +104,25 @@ impl Game {
             }
             for thread in threads {
                 let (mov,score) = thread.join().unwrap();
-                if score > best_score {
-                    best_score = score;
-                    best_move = mov;
+                if self.current_player == Player::One {
+                    if score > best_score {
+                        best_score = score;
+                        best_move = mov;
+                    }
+                } else {
+                    if score < best_score {
+                        best_score = score;
+                        best_move = mov;
+                    }
                 }
             }
         }
+        // see if rayon is faster
         let elapsed = now.elapsed().unwrap();
         println!("Time to evaluate best move to depth of {SEARCH_DEPTH}: {:?}", elapsed);
         best_move
     }
-
-    // fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
-    //     if depth == 0 {
-    //         return self.evaluate();
-    //     }
-    //     if maximizing {
-    //         let mut best = f32::MIN;
-    //         for &from in self.get_pieces(self.current_player) {
-    //             let piece = self.get(from).unwrap();
-    //             for to in piece.get_legal_moves(from, &mut self.clone()) {
-    //                 let mut game = self.clone();
-    //                 game.move_piece(from, to);
-    //                 let score = game.minimax(depth - 1, false, alpha, beta);
-    //                 best = f32::max(best, score);
-    //                 alpha = f32::max(alpha, score);
-    //                 if beta <= alpha {
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //         return best;
-    //     } else {
-    //         let mut best = f32::MAX;
-    //         for &from in self.get_pieces(self.current_player) {
-    //             let piece = self.get(from).unwrap();
-    //             for to in piece.get_legal_moves(from, &mut self.clone()) {
-    //                 let mut game = self.clone();
-    //                 game.move_piece(from, to);
-    //                 let score = game.minimax(depth - 1, true, alpha, beta);
-    //                 best = f32::min(best, score);
-    //                 beta = f32::min(beta, score);
-    //                 if beta <= alpha {
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //         return best;
-    //     }
-    // }
-
+    
     fn tree_search(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
         // the algorithm assumes a good evaluation function to approximate game state evaluations
         if depth <= 1 {
@@ -1225,3 +1194,43 @@ mod tests {
         assert!(!game.checkmate());
     }
 }
+
+
+// fn minimax(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
+//     if depth == 0 {
+//         return self.evaluate();
+//     }
+//     if maximizing {
+//         let mut best = f32::MIN;
+//         for &from in self.get_pieces(self.current_player) {
+//             let piece = self.get(from).unwrap();
+//             for to in piece.get_legal_moves(from, &mut self.clone()) {
+//                 let mut game = self.clone();
+//                 game.move_piece(from, to);
+//                 let score = game.minimax(depth - 1, false, alpha, beta);
+//                 best = f32::max(best, score);
+//                 alpha = f32::max(alpha, score);
+//                 if beta <= alpha {
+//                     break;
+//                 }
+//             }
+//         }
+//         return best;
+//     } else {
+//         let mut best = f32::MAX;
+//         for &from in self.get_pieces(self.current_player) {
+//             let piece = self.get(from).unwrap();
+//             for to in piece.get_legal_moves(from, &mut self.clone()) {
+//                 let mut game = self.clone();
+//                 game.move_piece(from, to);
+//                 let score = game.minimax(depth - 1, true, alpha, beta);
+//                 best = f32::min(best, score);
+//                 beta = f32::min(beta, score);
+//                 if beta <= alpha {
+//                     break;
+//                 }
+//             }
+//         }
+//         return best;
+//     }
+// }
