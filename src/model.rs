@@ -13,7 +13,7 @@ impl Model {
     pub fn new() -> Self {
         let pred_input_parameter_name = "input_1".to_owned();
         let pred_output_parameter_name = "value".to_owned();
-        let save_dir = "model/saved_model";
+        let save_dir = "model/model_v4";
         let mut graph = Graph::new();
         let bundle = SavedModelBundle::load(
             &SessionOptions::new(), &["serve"], &mut graph, save_dir
