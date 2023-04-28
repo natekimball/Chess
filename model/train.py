@@ -7,12 +7,13 @@ from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNor
 from keras.models import Model, load_model
 from sklearn.model_selection import train_test_split
 from keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
+from matplotlib import pyplot as plt
 import util
 
-skiprows = 90000
-nrows = 100000
-data = pd.read_csv('data/chessData.csv', nrows=nrows) #12958036 total lines
-# data.columns = ['FEN', 'Evaluation']
+skiprows = 297000#27000
+nrows = 300000
+data = pd.read_csv('data/chessData.csv', skiprows=skiprows, nrows=nrows) #12958036 total lines
+data.columns = ['FEN', 'Evaluation']
 print(f"rows {skiprows}-{nrows+skiprows}")
 
 print(data.head())
@@ -24,8 +25,8 @@ X = np.array(data['FEN'].values.tolist())
 y = np.array(data['Evaluation'].values.tolist())
 print(X.shape)
 
-epochs = 20
-batch_size = 64
+epochs = 30
+batch_size = 128
 
 # model params
 input_shape = (13, 8, 8)
@@ -64,8 +65,7 @@ def build_model(input_shape, num_filters, num_residual_blocks):
     model = tf.keras.Model(inputs=inputs, outputs=value_head)
     return model
 
-# learning_rate = 5e-4
-initial_learning_rate = 1e-3
+initial_learning_rate = 1e-4
 decay_rate = 0.96
 decay_steps = len(X)*.9 // batch_size
 
@@ -83,8 +83,8 @@ model_checkpoint = ModelCheckpoint('best-model.{epoch:02d}-{val_loss:.2f}', save
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, min_lr=1e-6)
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
-model = build_model(input_shape, num_filters, num_residual_blocks)
-# model = load_model('saved_model_v2')
+# model = build_model(input_shape, num_filters, num_residual_blocks)
+model = load_model('model_v4')
 
 model.compile(optimizer=optimizer, loss='mse', metrics='mae')
 
@@ -94,8 +94,24 @@ print(model.predict(X[:10]))
 
 history = model.fit(X, y, epochs=epochs, batch_size=batch_size, validation_split=0.1, callbacks=[reduce_lr, early_stopping, model_checkpoint])
 
+model.save('model_v5')
+
 print(model.predict(X[:10]))
 
-model.save('saved_model_v4')
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
 
 # util.save_frozen(model)

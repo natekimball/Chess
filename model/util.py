@@ -87,8 +87,15 @@ def fen_to_mat(fen):
     return mat.tolist()
 
 def evaluation_to_int(evaluation):
+    old = evaluation
+    if evaluation.find('\ufeff') != -1:
+        print("old",evaluation)
+        evaluation = evaluation[1:]
+        print("new",evaluation)
+    # if not evaluation:
+    #     return 23
     if evaluation[0] == '#':
-        return int(evaluation[1:])/10
+        evaluation = evaluation[1:]
     return int(evaluation)/10
 
 def save_frozen(model):

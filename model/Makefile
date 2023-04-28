@@ -10,16 +10,38 @@ onnx:
 
 results:
 	find . -name "*.out" | while read file; \
-	do if fgrep val_loss "$$file" >nul; \
-	then echo $$file; \
-	fgrep "EDT 2023" $$file | head -1; \
-	grep val_loss $$file; \
-	fgrep Epoch $$file | tail -1; \
-	tail -1 $$file; fi; \
-	done; echo
+		do if [[ $$(fgrep val_loss $$file) ]]; \
+		then \
+			echo $$file; \
+			fgrep "EDT 2023" $$file | head -1; \
+			grep val_loss $$file; \
+			fgrep Epoch $$file | tail -1; \
+			tail -1 $$file; \
+			echo; \
+		fi; \
+	done; \
+	echo
+
+result:
+	find . -name "*.out" | while read file; \
+		do if [[ $$(tail -1 $$file | fgrep loss) ]]; \
+		then \
+			echo $$file; \
+			fgrep "EDT 2023" $$file | head -1; \
+			grep val_loss $$file; \
+            tail -2f $$file; \
+        fi; \
+    done; \
+    echo
+
+squeue:
+	squeue -u $$USER
+
+scancel:
+	scancel -u $$USER
 
 # fgrep -E val_loss -E Epoch $$file
 # find . -name "*.out" | while read file; do if fgrep val_loss "$file" >nul; then echo "$file" fi; done
 # find . -name "*.out" | while read file; do fgrep val_loss "$file" | tail -1; done
 
-.PHONY: train clean onnx results
+.PHONY: train clean onnx results squeue
