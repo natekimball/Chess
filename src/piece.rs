@@ -1,12 +1,12 @@
 use std::{
     any::{Any, TypeId},
-    fmt::{Display},
+    fmt::{Display, Debug},
 };
 
 use crate::game::Game;
 use crate::player::Player;
 
-pub trait Piece: Display + DynClone + Send + Sync {
+pub trait Piece: Display + DynClone + Send + Sync + Debug {
     fn valid_move(&self, from: (u8, u8), to: (u8, u8), game: &mut Game) -> Move;
     fn get_legal_moves(&self, position: (u8, u8), game: &mut Game) -> Vec<(u8, u8)>;
     fn player(&self) -> Player;
@@ -81,4 +81,10 @@ pub enum Move {
     Castle,
     EnPassant((u8, u8)),
     Invalid
+}
+
+impl Move {
+    pub fn is_valid(self) -> bool {
+        self != Move::Invalid
+    }
 }

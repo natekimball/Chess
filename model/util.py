@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 
 def fen_to_mat(fen):
     mat = np.zeros((13, 8, 8), dtype=np.int8)

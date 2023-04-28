@@ -15,18 +15,19 @@ train:
 test:
 	cargo test
 
-%.pb:
-	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
+# %.pb:
+# 	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
 
 saved_model:
 	scp -r tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
 
-%.pt:
-	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
+# %.pt:
+# 	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
 
-%.onnx:
-	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
+# %.onnx:
+# 	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/$@ /home/nkimball/Projects/rust_projects/chess/model
 
 transfer:
 	scp -r tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/tf_saved_model /home/nkimball/Projects/rust_projects/chess/model; \
-	scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/model.* /home/nkimball/Projects/rust_projects/chess/model
+
+# scp tma5gv@rivanna.hpc.virginia.edu:/scratch/tma5gv/chess/model/model.* /home/nkimball/Projects/rust_projects/chess/model
