@@ -13,17 +13,23 @@ cargo run
 Two-player gameplay
 
 ```shell
-cargo run --2p
+cargo run -- --2p
 ```
 
 ## Algorithm Design
 
-First, the chess AI was trained on stockfish data, to build a model that could roughly evaluate board states. To make decisions, the algorithm performs an augmented mini-max tree search with alpha-beta pruning to a depth of 4 moves. For efficiency, my algorithm only searches moves that have a high probability of success as determined by my evaluation model. Next, the algorithm was further trained via the amplification technique, where the model is trained on its own output after performing a mini-max search. This guarantees convergence on game theory optimal strategy, because as the model improves, its amplified self will also improve.
+First, the chess AI was trained on stockfish data, to build a model that could roughly evaluate board states. To make decisions, the algorithm performs an augmented mini-max tree search with alpha-beta pruning to a depth of 3 moves. For efficiency, my algorithm only searches moves that have a high probability of success as determined by my evaluation model. The model was further trained via the amplification technique, where the model is trained on its own output after performing a mini-max search. This guarantees convergence on game theory optimal strategy, because as the model improves, its amplified self will also improve.
 
 ## Training the model
 
 ```shell
 python model/train.py
+```
+
+### Reinforcement learning
+
+```shell
+cargo run -- --train
 ```
 
 ### Training the model on Rivanna
