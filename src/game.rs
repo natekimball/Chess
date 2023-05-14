@@ -36,8 +36,8 @@ pub struct Game<'a> {
     computer_player: Option<Player>,
     cache: Cache,
     rl_training: bool,
-    // history: Vec<Game<'a>>,
-    // index: usize
+    history: Vec<Game<'a>>,
+    index: usize
 }
 
 impl<'a> Game<'a> {
@@ -66,8 +66,8 @@ impl<'a> Game<'a> {
             computer_player,
             cache: Cache::new(),
             rl_training,
-            // history: Vec::with_capacity(5),
-            // index: 0
+            history: Vec::with_capacity(5),
+            index: 0
         }
     }
 
@@ -341,16 +341,16 @@ impl<'a> Game<'a> {
         }
         // debug statements
         self.set_moved(piece.clone(), from, to);
-        // if self.player_in_check() {
-        //     println!("Wait you can't put yourself in check!");
-        //     for i in self.index-4..self.index {
-        //         println!("{}",self.history[i%5]);
-        //     }
-        //     println!("{self}");
-        //     println!("Moved from {:?} to {:?}", from, to);
-        //     panic!("Wait you can't put yourself in check!");
-        // }
-        assert!(!self.player_in_check(), "Wait you can't put yourself in check!");
+        if self.player_in_check() {
+            println!("Wait you can't put yourself in check!");
+            for i in self.index-4..self.index {
+                println!("{}",self.history[i%5]);
+            }
+            println!("{self}");
+            println!("Moved from {:?} to {:?}", from, to);
+            panic!("Wait you can't put yourself in check!");
+        }
+        // assert!(!self.player_in_check(), "Wait you can't put yourself in check!");
         self.set_last_double(None);
         match move_status {
             Move::Normal => (),
@@ -486,14 +486,14 @@ impl<'a> Game<'a> {
             println!("{} is in checkmate, {} wins!", self.current_player, self.current_player.other());
             return true;
         }
-        // if self.model.is_none() {
-        //     if self.index < 5 {
-        //         self.history.push(self.clone());
-        //     } else {
-        //         self.history[self.index%5] = self.clone();
-        //         self.index += 1;
-        //     }
-        // }
+        if self.model.is_none() {
+            if self.index < 5 {
+                self.history.push(self.clone());
+            } else {
+                self.history[self.index%5] = self.clone();
+                self.index += 1;
+            }
+        }
         return false;
     }
 
@@ -661,15 +661,16 @@ impl<'a> Game<'a> {
 
     pub(crate) fn take(&mut self, to: (u8, u8), new_piece: Square) {
         let piece = self.get(to).unwrap();
-        // if piece.is_type::<King>() {
-            // println!("You can't take a king, something went wrong!");
-            // // self.history.iter().skip(self.history.len()-3).for_each(|x| println!("{x}"));
-            // for i in self.index-4..self.index {
-            //     println!("{}",self.history[i%5]);
-            // }
-            // panic!("You can't take a king, something went wrong!");
-        // }
-        assert!(!piece.is_type::<King>(), "You can't take a king, something went wrong!");
+        if piece.is_type::<King>() {
+            println!("You can't take a king, something went wrong!");
+            for i in self.index-4..self.index {
+                println!("{}",self.history[i%5]);
+            }
+            println!("{self}");
+            println!("Took {:?}", to);
+            panic!("You can't take a king, something went wrong!");
+        }
+        // assert!(!piece.is_type::<King>(), "You can't take a king, something went wrong!");
         if !self.in_simulation {
             println!(
                 "Player {} took {}'s {}!",
