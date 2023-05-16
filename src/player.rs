@@ -20,6 +20,10 @@ impl Player {
             Player::Two => Player::One,
         }
     }
+
+    pub(crate) fn is_maximizing(&self) -> bool {
+        matches!(self, Player::One)
+    }
 }
 
 impl Display for Player {
