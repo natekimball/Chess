@@ -23,7 +23,7 @@ pub type Board = Vec<Vec<Square>>;
 pub type Matrix = [[[f32; 8]; 8]; 13];
 // const NUM_THREADS: usize = 4;
 const SEARCH_BREADTH: usize = 2 << 4;
-const SEARCH_DEPTH: u8 = 2;
+const DEFAULT_SEARCH_DEPTH: u8 = 2;
 const HALF_MOVE_LIMIT: u8 = 100;
 
 #[derive(Clone)]
@@ -90,7 +90,7 @@ impl<'a> Game<'a> {
             computer_player,
             cache: HashMap::new(),
             rl_training,
-            search_depth: search_depth.unwrap_or(SEARCH_DEPTH),
+            search_depth: search_depth.unwrap_or(DEFAULT_SEARCH_DEPTH),
             epsilon_greedy,
             epsilon: 1.0,
             epsilon_decay_rate: 0.98
@@ -161,7 +161,7 @@ impl<'a> Game<'a> {
             };
             (
                 (from, to),
-                game.tree_search(SEARCH_DEPTH - 1, maximizing, alpha, beta),
+                game.tree_search(self.search_depth - 1, maximizing, alpha, beta),
             )
         });
         let best_move = if self.current_player.is_maximizing() {
@@ -175,11 +175,10 @@ impl<'a> Game<'a> {
                 .unwrap()
                 .0
         };
-        // see if rayon is faster
         let elapsed = now.elapsed().unwrap();
         println!(
-            "Time to evaluate best move to depth of {SEARCH_DEPTH}: {:?}",
-            elapsed
+            "Time to evaluate best move to depth of {}: {:?}",
+            self.search_depth, elapsed
         );
         Some(best_move)
     }
@@ -205,7 +204,7 @@ impl<'a> Game<'a> {
             .par_iter()
             .map(|game| {
                 game.clone()
-                    .tree_search(SEARCH_DEPTH, false, f32::MIN, f32::MAX)
+                    .tree_search(self.search_depth, false, f32::MIN, f32::MAX)
             })
             .collect::<Vec<f32>>();
 
