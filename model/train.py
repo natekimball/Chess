@@ -100,7 +100,8 @@ print(model.predict(X[:5]))
 
 history = model.fit(X, y, epochs=epochs, batch_size=batch_size, validation_split=0.1, callbacks=[reduce_lr, early_stopping, model_checkpoint])
 
-# model.save('model_v5')
+model.save('model_v5')
+util.save_signatures(model, 'saved_model')
 
 print(model.predict(X[:5]))
 
