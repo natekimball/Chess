@@ -10,6 +10,7 @@ use crate::{
     rook::Rook,
 };
 use colored::Colorize;
+use rand::{Rng, seq::SliceRandom, distributions::Uniform, prelude::Distribution};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     cmp::{max, min},
@@ -51,9 +52,9 @@ pub struct Game<'a> {
     cache: HashMap<String,f32>,
     rl_training: bool,
     search_depth: u8,
-    // history: Vec<String>,
-    // history: Vec<Game<'a>>,
-    // index: usize
+    epsilon_greedy: bool,
+    epsilon: f64,
+    epsilon_decay_rate: f64
 }
 
 impl<'a> Game<'a> {
@@ -63,6 +64,7 @@ impl<'a> Game<'a> {
         rl_training: bool,
         model: &'a Option<Model>,
         search_depth: Option<u8>,
+        epsilon_greedy: bool
     ) -> Self {
         Self {
             board: setup_board(),
@@ -76,42 +78,8 @@ impl<'a> Game<'a> {
             has_p2_king_moved: false,
             has_p2_left_rook_moved: false,
             has_p2_right_rook_moved: false,
-            p1_pieces: vec![
-                (0, 7),
-                (1, 7),
-                (2, 7),
-                (3, 7),
-                (4, 7),
-                (5, 7),
-                (6, 7),
-                (7, 7),
-                (0, 6),
-                (1, 6),
-                (2, 6),
-                (3, 6),
-                (4, 6),
-                (5, 6),
-                (6, 6),
-                (7, 6),
-            ],
-            p2_pieces: vec![
-                (0, 0),
-                (1, 0),
-                (2, 0),
-                (3, 0),
-                (4, 0),
-                (5, 0),
-                (6, 0),
-                (7, 0),
-                (0, 1),
-                (1, 1),
-                (2, 1),
-                (3, 1),
-                (4, 1),
-                (5, 1),
-                (6, 1),
-                (7, 1),
-            ],
+            p1_pieces: vec![(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7), (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)],
+            p2_pieces: vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)],
             p1_taken: [0; 5],
             p2_taken: [0; 5],
             half_move_clock: 0,
@@ -123,13 +91,14 @@ impl<'a> Game<'a> {
             cache: HashMap::new(),
             rl_training,
             search_depth: search_depth.unwrap_or(SEARCH_DEPTH),
-            // history: Vec::with_capacity(5),
-            // index: 0
+            epsilon_greedy,
+            epsilon: 1.0,
+            epsilon_decay_rate: 0.98
         }
     }
 
     pub fn two_player_game() -> Self {
-        Self::new(true, None, false, &None, None)
+        Self::new(true, None, false, &None, None,false)
     }
 
     pub fn single_player_game(
@@ -137,11 +106,11 @@ impl<'a> Game<'a> {
         model: &'a Option<Model>,
         search_depth: Option<u8>,
     ) -> Self {
-        Self::new(false, player, false, model, search_depth)
+        Self::new(false, player, false, model, search_depth, false)
     }
 
-    pub fn self_play(model: &'a Option<Model>, search_depth: Option<u8>) -> Self {
-        Self::new(false, None, true, model, search_depth)
+    pub fn self_play(model: &'a Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool) -> Self {
+        Self::new(false, None, true, model, search_depth, epsilon_greedy)
     }
 
     fn get_best_move(&mut self) -> Option<((u8, u8), (u8, u8))> {
@@ -476,9 +445,6 @@ impl<'a> Game<'a> {
         self.set_moved(piece.clone(), from, to);
         // if self.player_in_check() {
         //     println!("Wait you can't put yourself in check!");
-        //     for i in self.index-4..self.index {
-        //         println!("{}",self.history[i%5]);
-        //     }
         //     println!("{self}");
         //     println!("Moved from {:?} to {:?}", from, to);
         //     panic!("Wait you can't put yourself in check!");
@@ -558,24 +524,6 @@ impl<'a> Game<'a> {
             let (x, y) = last_double;
             data[12][x as usize][y as usize] = 1.0;
         }
-        // let king_pos_1 = self.get_king(Player::One);
-        // let king_pos_2 = self.get_king(Player::Two);
-        // let king_1 = self.get(king_pos_1).unwrap();
-        // let king_1 = king_1.get_piece::<King>().unwrap();
-        // let king_2 = self.get(king_pos_2).unwrap();
-        // let king_2 = king_2.get_piece::<King>().unwrap();
-        // if king_1.can_castle_left(king_pos_1, self) {
-        //     data[12][7][0] = 1.0;
-        // }
-        // if king_1.can_castle_right(king_pos_1, self) {
-        //     data[12][7][7] = 1.0;
-        // }
-        // if king_2.can_castle_left(king_pos_2, self) {
-        //     data[12][0][0] = 1.0;
-        // }
-        // if king_2.can_castle_right(king_pos_2, self) {
-        //     data[12][0][7] = 1.0;
-        // }
         if self.has_p1_king_moved {
             if self.has_p1_left_rook_moved {
                 data[12][7][0] = 1.0;
@@ -655,20 +603,21 @@ impl<'a> Game<'a> {
             );
             return true;
         }
-        // if self.model.is_none() {
-        //     if self.index < 5 {
-        //         self.history.push(format!("{self}"));
-        //     } else {
-        //         self.history[self.index%5] = format!("{self}");
-        //         self.index += 1;
-        //     }
-        // }
         return false;
     }
 
     pub fn rl_training_move(&mut self) -> bool {
         self.in_simulation = true;
         let (from, to) = self.get_best_move_and_back_propagate();
+        if self.epsilon_greedy {
+            let mut rng = rand::thread_rng();
+            let choice = rng.gen_bool(self.epsilon);
+            if choice {
+                let moves = self.get_possible_moves(self.current_player);
+                let (from, to) = moves.choose(&mut rng).unwrap();
+            }
+            self.update_epsilon();
+        }
         println!(
             "Player {} moved {} -> {} ",
             self.current_player.number(),
@@ -852,9 +801,6 @@ impl<'a> Game<'a> {
         let piece = self.get(to).unwrap();
         // if piece.is_type::<King>() {
         //     println!("You can't take a king, something went wrong!");
-        //     for i in self.index-4..self.index {
-        //         println!("{}",self.history[i%5]);
-        //     }
         //     println!("{self}");
         //     println!("Took {:?}", to);
         //     panic!("You can't take a king, something went wrong!");
@@ -1494,10 +1440,6 @@ impl<'a> Game<'a> {
         );
         // if self.player_in_check() {
         //     println!("Wait you can't put yourself in check!");
-        //     for i in (self.index as i8 -4)..self.index as i8 {
-        //         println!("{}",self.history[(i%5).abs() as usize]);
-        //     }
-        //     // self.history.iter().skip((self.index as i8 -4 % 5) as usize).for_each(|x| println!("{}",x));
         //     println!("{self}");
         //     println!("Moved from {:?} to {:?}", from, to);
         //     panic!("Wait you can't put yourself in check!");
@@ -1635,30 +1577,8 @@ impl<'a> Game<'a> {
             Player::Two => 'b',
         });
         fen.push(' ');
-
-        // let king_pos_1 = self.get_king(Player::One);
-        // let king_pos_2 = self.get_king(Player::Two);
-        // let king_1 = self.get(king_pos_1).unwrap();
-        // let king_1 = king_1.get_piece::<King>().unwrap();
-        // let king_2 = self.get(king_pos_2).unwrap();
-        // let king_2 = king_2.get_piece::<King>().unwrap();
+        
         let mut castleable = false;
-        // if king_1.can_castle_left(king_pos_1, self) {
-        //     fen.push('K');
-        //     castleable = true;
-        // }
-        // if king_1.can_castle_right(king_pos_1, self) {
-        //     fen.push('Q');
-        //     castleable = true;
-        // }
-        // if king_2.can_castle_left(king_pos_2, self) {
-        //     fen.push('k');
-        //     castleable = true;
-        // }
-        // if king_2.can_castle_right(king_pos_2, self) {
-        //     fen.push('q');
-        //     castleable = true;
-        // }
         if self.has_p1_king_moved {
             if self.has_p1_left_rook_moved {
                 fen.push('K');
@@ -1699,6 +1619,10 @@ impl<'a> Game<'a> {
         fen
     }
 
+    fn update_epsilon(&mut self) {
+        self.epsilon *= self.epsilon_decay_rate;
+    }
+
     // pub fn from_fen(fen: String) -> Self {
     //     Self {
     //         board: vec![vec![None; 8]; 8],
@@ -1708,7 +1632,6 @@ impl<'a> Game<'a> {
     //         p2_taken: [0;5],
     //         king_one: (0, 0),
     //         king_two: (0, 0),
-    //         game_over: false,
     //         current_player: Player::One,
     //         last_double: None,
     //         has_p1_king_moved: false,
