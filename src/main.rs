@@ -23,6 +23,7 @@ fn main() {
     let computer_player = if args.contains(&String::from("--black")) {Some(Player::Two)} else {Some(Player::One)};
     let self_play = args.contains(&String::from("--self-play"));
     let heuristic = args.contains(&String::from("--heuristic"));
+    let epsilon_greedy = args.contains(&String::from("--epsilon-greedy"));
     let search_depth = if args.contains(&String::from("--depth")) {
         // TODO: not working
         Some(args[args.iter().position(|x| x == "--depth").unwrap() + 1].parse::<u8>().unwrap())
@@ -41,7 +42,7 @@ fn main() {
     let model = if two_player || heuristic { None } else { Some(Model::new(save_dir)) };
     if self_play {
         let num_games = if args.contains(&String::from("--num-games")) {args[args.iter().position(|x| x == "--num-games").unwrap() + 1].parse::<usize>().unwrap()} else {1};
-        reinforcement_learning(num_games, &model, search_depth);
+        reinforcement_learning(num_games, &model, search_depth, epsilon_greedy);
     } else {
         let mut play_again = true;
         while play_again {
@@ -69,8 +70,8 @@ fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option
     game.play_again()
 }
 
-fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth: Option<u8>) {
-    let mut game = Game::self_play(model, search_depth);
+fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool) {
+    let mut game = Game::self_play(model, search_depth, epsilon_greedy);
 
     for _ in 0..num_games {
         let mut game_over = false;
@@ -82,7 +83,7 @@ fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth:
 }
 
 fn heuristic_self_play(search_depth: Option<u8>) {
-    let mut game = Game::self_play(&None, search_depth);
+    let mut game = Game::self_play(&None, search_depth, false);
     let mut game_over = false;
     while !game_over {
         game_over = game.turn();
