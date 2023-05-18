@@ -205,7 +205,7 @@ impl<'a> Game<'a> {
             .par_iter()
             .map(|game| {
                 game.clone()
-                    .tree_search(self.search_depth, false, f32::MIN, f32::MAX)
+                    .tree_search(self.search_depth - 1, false, f32::MIN, f32::MAX)
             })
             .collect::<Vec<f32>>();
 
@@ -233,7 +233,7 @@ impl<'a> Game<'a> {
             "Time to evaluate best move to depth of {}: {:?}",
             self.search_depth, elapsed
         );
-        
+
         self.model
         .as_ref()
         .unwrap()
@@ -729,12 +729,18 @@ impl<'a> Game<'a> {
     }
 
     pub fn save_model(&self) {
-        // TODO: save model
         assert!(self.model.is_some());
-        // self.model.as_ref().unwrap().save_model()
+        self.model.as_ref().unwrap().save_model()
     }
 
-    fn get_piece_scores(&self) -> i32 {
+    fn get_piece_scores(&mut self) -> i32 {
+        if self.checkmate() {
+            return if self.current_player.is_maximizing() {
+                i32::MIN
+            } else {
+                i32::MAX
+            }
+        }
         if self.half_move_clock_expired() {
             return 0;
         }
