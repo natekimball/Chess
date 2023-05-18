@@ -1,16 +1,13 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --time=3-00:00:00
-#SBATCH --partition=bii-gpu
+#SBATCH --time=1-00:00:00
+#SBATCH --partition=bii
 #SBATCH --account=bii_dsc_community
-#SBATCH --gres=gpu:a100
-#SBATCH --job-name=rl-training
+#SBATCH --job-name=heuristic-self-play
 #SBATCH --output=%u-%j.out
 #SBATCH --error=%u-%j.err
-#SBATCH --reservation=bi_fox_dgx
-#SBATCH --constraint=a100_80gb
-#SBATCH --mem-per-gpu=64G
+#SBATCH --mem-per-cpu=64G
 
 date
 nvidia-smi
@@ -22,7 +19,4 @@ export MODEL_DIR=$CHESS_DIR/model
 export CHECKPOINT_DIR=$MODEL_DIR/training_checkpoints
 
 cd $CHESS_DIR
-cargo run --release -- --self-play --depth 2 --num-games 10
-
-cd $MODEL_DIR
-python
+cargo run --release -- --self-play --heuristic --depth 5

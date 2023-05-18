@@ -15,9 +15,8 @@
 date
 nvidia-smi
 module purge
-# module load  gcc/11.2.0  openmpi/3.1.6  python/3.8.8  cuda/11.4.2 cudnn/8.2.4.15 cudatoolkit/11.0.3-py3.8
-module load cuda cudatoolkit cudnn gcc openmpi python 
-# moduleload gcc openmpi python
+# module load cuda cudatoolkit cudnn gcc openmpi python 
+module load gcc openmpi python
 source ./ENV/bin/activate
 # pip install -r ../requirements.txt
 time python train.py
