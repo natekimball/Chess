@@ -25,7 +25,6 @@ fn main() {
     let heuristic = args.contains(&String::from("--heuristic"));
     let epsilon_greedy = args.contains(&String::from("--epsilon-greedy"));
     let search_depth = if args.contains(&String::from("--depth")) {
-        // TODO: not working
         Some(args[args.iter().position(|x| x == "--depth").unwrap() + 1].parse::<u8>().unwrap())
     } else {
         None
@@ -33,7 +32,7 @@ fn main() {
     let save_dir = if args.contains(&String::from("--save-dir")) {
         args[args.iter().position(|x| x == "--save-dir").unwrap() + 1].as_str()
     } else {
-        "model/saved_model_t"
+        "model/model_v4_w_sigs"
     };
     if heuristic && self_play {
         return heuristic_self_play(search_depth);
