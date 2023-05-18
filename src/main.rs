@@ -64,9 +64,7 @@ fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option
         // print!("\x1B[2J\x1B[1;1H");
         // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
         game_over = game.turn();
-    }
-    
-    
+    }    
     game.play_again()
 }
 

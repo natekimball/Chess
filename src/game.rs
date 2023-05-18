@@ -184,6 +184,7 @@ impl<'a> Game<'a> {
     }
 
     fn get_best_move_and_back_propagate(&mut self) -> ((u8, u8), (u8, u8)) {
+        let now = std::time::SystemTime::now();
         let possible_moves = self.get_possible_moves(self.current_player);
 
         let games: Vec<Game> = possible_moves
@@ -208,11 +209,6 @@ impl<'a> Game<'a> {
             })
             .collect::<Vec<f32>>();
 
-        self.model
-            .as_ref()
-            .unwrap()
-            .back_propagate(&matrices, &amplified_scores);
-
         let mut best_move = possible_moves[0];
         let mut best_score = if self.current_player == Player::One {
             f32::MIN
@@ -232,6 +228,16 @@ impl<'a> Game<'a> {
                 }
             }
         }
+        let elapsed = now.elapsed().unwrap();
+        println!(
+            "Time to evaluate best move to depth of {}: {:?}",
+            self.search_depth, elapsed
+        );
+        
+        self.model
+        .as_ref()
+        .unwrap()
+        .back_propagate(&matrices, &amplified_scores);
         best_move
     }
 
@@ -607,13 +613,13 @@ impl<'a> Game<'a> {
 
     pub fn rl_training_move(&mut self) -> bool {
         self.in_simulation = true;
-        let (from, to) = self.get_best_move_and_back_propagate();
+        let (mut from, mut to) = self.get_best_move_and_back_propagate();
         if self.epsilon_greedy {
             let mut rng = rand::thread_rng();
             let choice = rng.gen_bool(self.epsilon);
             if choice {
                 let moves = self.get_possible_moves(self.current_player);
-                let (from, to) = moves.choose(&mut rng).unwrap();
+                (from, to) = *moves.choose(&mut rng).unwrap();
             }
             self.update_epsilon();
         }
