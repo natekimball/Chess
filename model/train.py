@@ -7,26 +7,29 @@ from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNor
 from keras.models import Model, load_model
 from keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 from matplotlib import pyplot as plt
+import sys
 import util
 
 # skiprows = 297000#27000
-skiprows=0
-nrows = 300000
-data = pd.read_csv('data/chessData.csv', nrows=nrows) #12958036 total lines
+skiprows = int(util.get_arg('--skip',0))
+nrows = int(util.get_arg('--nrows',100000))
+
+data = pd.read_csv('data/chessData.csv', nrows=nrows, skiprows=skiprows) #12958036 total lines
 data.columns = ['FEN', 'Evaluation']
 print(f"rows {skiprows}-{nrows+skiprows}")
 
 print(data.head())
 
 data['FEN'] = data['FEN'].apply(util.fen_to_mat)
-data['Evaluation'] = data['Evaluation'].apply(util.evaluation_to_int)
+data['Evaluation'] = data['Evaluation'].apply(lambda x: x/10)
+# data['Evaluation'] = data['Evaluation'].apply(util.evaluation_to_int)
 print(data.head())
 X = np.array(data['FEN'].values.tolist())
 y = np.array(data['Evaluation'].values.tolist())
 print(X.shape)
 
-epochs = 30
-batch_size = 128
+epochs = int(util.get_arg('--epochs',30))
+batch_size = int(util.get_arg('--batch_size',128))
 
 input_shape = (13, 8, 8)
 num_filters = 256
@@ -86,8 +89,11 @@ model_checkpoint = ModelCheckpoint('best-model.{epoch:02d}-{val_loss:.2f}', save
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, min_lr=1e-6)
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
-model = build_model(input_shape, num_filters, num_residual_blocks)
-# model = load_model('model_v4')
+load_dir = util.get_arg('--load-dir',None)
+if load_dir:
+    model = load_model(load_dir)
+else:
+    model = build_model(input_shape, num_filters, num_residual_blocks)
 
 model.compile(optimizer=optimizer, loss='mse', metrics='mae')
 
@@ -97,8 +103,9 @@ print(model.predict(X[:10]))
 
 history = model.fit(X, y, epochs=epochs, batch_size=batch_size, validation_split=0.1, callbacks=[reduce_lr, early_stopping, model_checkpoint])
 
-model.save('new_model_v1')
-util.save_signatures(model, 'new_model_v1_w_sigs')
+save_dir = util.get_arg('--save-dir','saved_model')
+model.save('keras.'+save_dir)
+util.save_signatures(model, save_dir)
 
 print(model.predict(X[:10]))
 

@@ -19,7 +19,7 @@ module purge
 module load gcc openmpi python
 source ./ENV/bin/activate
 # pip install -r ../requirements.txt
-time python train.py
+time python train.py --skip 0 --nrows --save-dir saved_model # --load-dir saved_model
 date
 # pip install onnx
 # make convert

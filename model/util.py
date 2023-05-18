@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import sys
 
 def fen_to_mat(fen):
     mat = np.zeros((13, 8, 8), dtype=np.int8)
@@ -88,7 +89,6 @@ def fen_to_mat(fen):
     return mat.tolist()
 
 def evaluation_to_int(evaluation):
-    old = evaluation
     if evaluation.find('\ufeff') != -1:
         print("old",evaluation)
         evaluation = evaluation[1:]
@@ -110,7 +110,6 @@ def save_signatures(model, output_dir):
             'save': custom_model.save
         }
     )
-    # tf.keras.saving.save_model(model, filepath='saved_model_t2')
 
 train_input_signature = [
     tf.TensorSpec(shape=(None, 13, 8, 8), dtype=tf.float32, name='input'),
@@ -121,9 +120,9 @@ pred_input_signature = [
     tf.TensorSpec(shape=(None, 13, 8, 8), dtype=tf.float32, name='input')
 ]
 
-# save_input_signature = [
-#     tf.TensorSpec(shape=(None, 1), dtype=tf.string, name='file_prefix')
-# ]
+save_input_signature = [
+    tf.TensorSpec(shape=(None, 1), dtype=tf.string, name='file_prefix')
+]
 
 class CustomModel(tf.keras.Model):
     def __init__(self, base_model, optimizer, **kwargs):
@@ -149,13 +148,9 @@ class CustomModel(tf.keras.Model):
     def save(self):
         return self.checkpoint.write(file_prefix='model/training_checkpoints/ckpt')
 
-    # @tf.function(input_signature=save_input_signature)
-    # def save(self, file_prefix):
-    #     return checkpoint.write(file_prefix=file_prefix)
-
-def read_checkpoint(model, ckpt_dir):
+def read_checkpoint(model):
     checkpoint = tf.train.Checkpoint(model=model)
-    checkpoint.read(tf.train.latest_checkpoint(ckpt_dir)).assert_consumed()
+    checkpoint.read(tf.train.latest_checkpoint('training_checkpoints')).assert_consumed()
     return model
 
 def save_frozen(model):
@@ -168,3 +163,9 @@ def save_frozen(model):
     # Save the frozen graph to a .pb file
     with tf.io.gfile.GFile('saved_model.pb', 'wb') as f:
         f.write(frozen_func.graph.as_graph_def().SerializeToString())
+
+def get_arg(key, default):
+    if key in sys.argv:
+        return sys.argv[sys.argv.index(key) + 1]
+    else:
+        return default

@@ -25,4 +25,4 @@ cd $CHESS_DIR
 cargo run --release -- --self-play --depth 2 --num-games 10
 
 cd $MODEL_DIR
-python
+python ckpt-convert.py --model-path $MODEL_DIR/model --out-dir $MODEL_DIR/new_model
