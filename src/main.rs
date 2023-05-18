@@ -71,11 +71,16 @@ fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option
 fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool) {
     let mut game = Game::self_play(model, search_depth, epsilon_greedy);
 
-    for _ in 0..num_games {
+    for i in 0..num_games {
+        println!("Playing game {}/{}", i+1, num_games);
+        let now = std::time::Instant::now();
         let mut game_over = false;
         while !game_over {
             game_over = game.turn();
         }
+        let elapsed = now.elapsed();
+        println!("Time to play game {i}: {:?}", elapsed);
+        println!("Saving model...");
         game.save_model();
     }
 }
