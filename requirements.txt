@@ -4,3 +4,4 @@ pandas
 numpy
 torch
 tf2onnx
+matplotlib

@@ -99,10 +99,9 @@ mod tests {
         let mut board: Board = vec![vec![None; 8];8];
         board[3][3] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::new();
+        let mut game = Game::two_player_game();
         game.set_pieces(vec![(3,3)], vec![]);
         game.set_board(board);
-        game.set_model(None);
 
         println!("{game}");
 

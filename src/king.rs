@@ -138,7 +138,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::{game::Board, knight::Knight};
+    use crate::{game::Board, knight::Knight, pawn::Pawn, bishop::Bishop};
 
     #[test]
     fn simple_castles() {
@@ -150,10 +150,9 @@ mod tests {
         board[7][4] = Some(Box::new(King::new(Player::One)));
         board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::new();
+        let mut game = Game::two_player_game();
         game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
-        game.set_model(None);
 
         print!("{game}");
 
@@ -181,10 +180,9 @@ mod tests {
         board[7][4] = Some(Box::new(King::new(Player::One)));
         board[7][6] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::new();
+        let mut game = Game::two_player_game();
         game.set_pieces(vec![(2,7),(4,7),(6,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
-        game.set_model(None);
 
         print!("{game}");
 
@@ -207,16 +205,41 @@ mod tests {
         board[7][4] = Some(Box::new(King::new(Player::One)));
         board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::new();
+        let mut game = Game::two_player_game();
         game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(3,5)]);
         game.set_board(board);
-        game.set_model(None);
 
         print!("{game}");
 
         let king1 = game.get((4,7)).unwrap();
         let king1 = king1.get_piece::<King>().unwrap();
 
+        assert!(king1.valid_move((4,7), (3,7), &mut game).is_valid());
+
         assert_eq!(king1.get_legal_moves((4,7), &mut game).len(), 4);
+    }
+
+    #[test]
+    fn moving_out_of_check2() {
+        let mut board: Board = vec![vec![None;8];8];
+        board[0][4] = Some(Box::new(King::new(Player::Two)));
+        board[1][4] = Some(Box::new(Pawn::new(Player::Two)));
+        board[1][5] = Some(Box::new(Pawn::new(Player::Two)));
+        board[0][5] = Some(Box::new(Pawn::new(Player::Two)));
+        board[3][1] = Some(Box::new(Bishop::new(Player::One)));
+
+        let mut game = Game::two_player_game();
+        game.set_pieces(vec![(1,3)], vec![(4,0),(5,1),(5,0),(4,1)]);
+        game.set_board(board);
+        game.set_player(Player::Two);
+
+        print!("{game}");
+
+        let king = game.get((4,0)).unwrap();
+        let king = king.get_piece::<King>().unwrap();
+
+        assert!(king.valid_move((4,0), (3,0), &mut game).is_valid());
+
+        assert_eq!(king.get_legal_moves((4,0), &mut game).len(), 1);
     }
 }

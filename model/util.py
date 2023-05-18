@@ -93,11 +93,70 @@ def evaluation_to_int(evaluation):
         print("old",evaluation)
         evaluation = evaluation[1:]
         print("new",evaluation)
-    # if not evaluation:
-    #     return 23
     if evaluation[0] == '#':
         evaluation = evaluation[1:]
     return int(evaluation)/10
+
+def save_signatures(model, output_dir):
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)    
+    custom_model = CustomModel(model, optimizer)
+
+    tf.saved_model.save(
+        custom_model,
+        output_dir,
+        signatures={
+            'train': custom_model.train_step,
+            'pred': custom_model.predict,
+            'save': custom_model.save
+        }
+    )
+    # tf.keras.saving.save_model(model, filepath='saved_model_t2')
+
+train_input_signature = [
+    tf.TensorSpec(shape=(None, 13, 8, 8), dtype=tf.float32, name='input'),
+    tf.TensorSpec(shape=(None, 1), dtype=tf.float32, name='training_target')
+]
+
+pred_input_signature = [
+    tf.TensorSpec(shape=(None, 13, 8, 8), dtype=tf.float32, name='input')
+]
+
+# save_input_signature = [
+#     tf.TensorSpec(shape=(None, 1), dtype=tf.string, name='file_prefix')
+# ]
+
+class CustomModel(tf.keras.Model):
+    def __init__(self, base_model, optimizer, **kwargs):
+        super(CustomModel, self).__init__(**kwargs)
+        self.base_model = base_model
+        self.optimizer = optimizer
+        self.checkpoint = tf.train.Checkpoint(model=self.base_model, optimizer=self.optimizer)
+
+    @tf.function(input_signature=train_input_signature)
+    def train_step(self, inputs, targets):
+        with tf.GradientTape() as tape:
+            predictions = self.base_model(inputs, training=True)
+            loss = tf.keras.losses.mean_squared_error(targets, predictions)
+        gradients = tape.gradient(loss, self.base_model.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.base_model.trainable_variables))
+        return loss
+
+    @tf.function(input_signature=pred_input_signature)
+    def predict(self, inputs):
+        return self.base_model(inputs, training=False)
+    
+    @tf.function
+    def save(self):
+        return self.checkpoint.write(file_prefix='model/training_checkpoints/ckpt')
+
+    # @tf.function(input_signature=save_input_signature)
+    # def save(self, file_prefix):
+    #     return checkpoint.write(file_prefix=file_prefix)
+
+def read_checkpoint(model, ckpt_dir):
+    checkpoint = tf.train.Checkpoint(model=model)
+    checkpoint.read(tf.train.latest_checkpoint(ckpt_dir)).assert_consumed()
+    return model
 
 def save_frozen(model):
     infer = model.signatures['serving_default']
