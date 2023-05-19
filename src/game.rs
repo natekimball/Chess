@@ -25,6 +25,8 @@ pub type Matrix = [[[f32; 8]; 8]; 13];
 const SEARCH_BREADTH: usize = 2 << 4;
 const DEFAULT_SEARCH_DEPTH: u8 = 2;
 const HALF_MOVE_LIMIT: u8 = 100;
+const INITIAL_EPSILON: f64 = 1.0;
+const EPSILON_DECAY_RATE: f64 = 0.98;
 
 #[derive(Clone)]
 pub struct Game<'a> {
@@ -92,8 +94,8 @@ impl<'a> Game<'a> {
             rl_training,
             search_depth: search_depth.unwrap_or(DEFAULT_SEARCH_DEPTH),
             epsilon_greedy,
-            epsilon: 1.0,
-            epsilon_decay_rate: 0.98
+            epsilon: INITIAL_EPSILON,
+            epsilon_decay_rate: EPSILON_DECAY_RATE
         }
     }
 

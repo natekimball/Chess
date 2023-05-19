@@ -22,7 +22,7 @@ cargo run -- --2p
 
 First, the model was pre=trained on stockfish evaluations, to build a model that could roughly evaluate board states and thus Q values. To make decisions, the algorithm performs an augmented mini-max tree search with alpha-beta pruning to a depth of 3 moves. For efficiency, my algorithm only searches moves that have a high probability of success as determined by the move's evaluation. The model was further trained via the reinforcement learning technique called amplification, where the model is trained on its own output after performing a mini-max search. This guarantees convergence on game theory optimal strategy, because as the model improves, its amplified self will also improve.
 
-## Pre-training the model
+## Pre-training
 
 ```shell
 python model/train.py
@@ -31,18 +31,18 @@ python model/train.py
 ## Reinforcement learning
 
 ```shell
-cargo run -- --self-play --num-games n --depth m
+cargo run -- --self-play --num-games n --depth m --epsilon-greedy
 ```
 
 ## Training the model on Rivanna
 
-### Pre-training
+### Pre-training (Rivanna)
   
 ```shell
 sbatch model/train.slurm
 ```
 
-### Reinforcement learning
+### Reinforcement learning (Rivanna)
 
 ```shell
 sbatch model/rl-training.slurm
