@@ -720,16 +720,6 @@ impl<'a> Game<'a> {
         self.p2_pieces = p2_pieces;
     }
 
-    pub fn play_again(&self) -> bool {
-        // println!("{self}");
-        // println!("Game over!");
-        // println!("{} wins!", self.current_player);
-        println!("Play again? (y/n)");
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        input.trim().to_ascii_lowercase() == "y"
-    }
-
     pub fn save_model(&self) {
         assert!(self.model.is_some());
         self.model.as_ref().unwrap().save_model()
