@@ -20,7 +20,7 @@ use player::Player;
 fn main() {
     let args: Vec<String> = args().collect();
     let two_player = args.contains(&"--2p".to_string());
-    let computer_player = if args.contains(&String::from("--black")) {Some(Player::Two)} else {Some(Player::One)};
+    let computer_player = if args.contains(&String::from("--white")) {Some(Player::One)} else {Some(Player::Two)};
     let self_play = args.contains(&String::from("--self-play"));
     let heuristic = args.contains(&String::from("--heuristic"));
     let epsilon_greedy = args.contains(&String::from("--epsilon-greedy"));
