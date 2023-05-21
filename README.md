@@ -12,6 +12,12 @@ cargo run --release -- --depth d
 
 set d to be the depth of the search or number of future moves the algorithm will evaluate
 
+### Play against heuristic algorithm
+
+```shell
+cargo run --release -- --heuristic --depth d
+```
+
 ### Two-player gameplay
 
 ```shell
@@ -21,6 +27,16 @@ cargo run -- --2p
 ## Algorithm Design
 
 First, the model was pre=trained on stockfish evaluations, to build a model that could roughly evaluate board states and thus Q values. To make decisions, the algorithm performs an augmented mini-max tree search with alpha-beta pruning to a depth of 3 moves. For efficiency, my algorithm only searches moves that have a high probability of success as determined by the move's evaluation. The model was further trained via the reinforcement learning technique called amplification, where the model is trained on its own output after performing a mini-max search. This guarantees convergence on game theory optimal strategy, because as the model improves, its amplified self will also improve.
+
+## Environment set-up
+
+```shell
+# clone repository
+cd model
+time python -m venv ENV
+source ENV/bin/activate
+pip install -r ../requirements.txt
+```
 
 ## Pre-training
 
@@ -34,7 +50,13 @@ python model/train.py
 cargo run -- --self-play --num-games n --depth m --epsilon-greedy
 ```
 
-## Training the model on Rivanna
+## Training the model on Rivanna HPC
+
+### Environment set-up (Rivanna)
+
+```shell
+sbatch model/environment.slurm
+```
 
 ### Pre-training (Rivanna)
   

@@ -4,12 +4,12 @@
 #SBATCH --time=3-00:00:00
 #SBATCH --partition=bii-gpu
 #SBATCH --account=bii_dsc_community
-#SBATCH --gres=gpu:a100:2
+#SBATCH --gres=gpu:v100:2
 #SBATCH --job-name=train-chess
 #SBATCH --output=%u-%j.out
 #SBATCH --error=%u-%j.err
-#SBATCH --reservation=bi_fox_dgx
-#SBATCH --constraint=a100_80gb
+# #SBATCH --reservation=bi_fox_dgx
+# #SBATCH --constraint=a100_80gb
 # #SBATCH --mem-per-gpu=128G
 #SBATCH --mem=256G
 
