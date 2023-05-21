@@ -157,7 +157,7 @@ impl<'a> Game<'a> {
         let move_evals = possible_moves.par_iter().map(|&(from, to)| {
             let mut game = self.clone();
             game.move_piece(from, to);
-            let (maximizing, alpha, beta) = match self.current_player {
+            let (maximizing, alpha, beta) = match game.current_player {
                 Player::One => (true, f32::MIN, f32::MAX),
                 Player::Two => (false, f32::MAX, f32::MIN),
             };
@@ -206,8 +206,12 @@ impl<'a> Game<'a> {
         let amplified_scores = games
             .par_iter()
             .map(|game| {
+                let (maximizing, alpha, beta) = match game.current_player {
+                    Player::One => (true, f32::MIN, f32::MAX),
+                    Player::Two => (false, f32::MAX, f32::MIN),
+                };
                 game.clone()
-                    .tree_search(self.search_depth - 1, false, f32::MIN, f32::MAX)
+                    .tree_search(self.search_depth - 1, maximizing, alpha, beta)
             })
             .collect::<Vec<f32>>();
 
@@ -248,8 +252,11 @@ impl<'a> Game<'a> {
         if self.half_move_clock_expired() {
             return 0.0;
         }
-        if depth <= 1 {
-            return self.last_level_minimax(maximizing, alpha, beta);
+        // if depth <= 1 {
+        //     return self.last_level_minimax(maximizing, alpha, beta);
+        // }
+        if depth == 0 {
+            return self.evaluate()
         }
         // let moves = self.get_moves_sorted(maximizing);
         let moves = self.get_possible_moves(self.current_player);
@@ -371,6 +378,7 @@ impl<'a> Game<'a> {
             );
             self.set_moved(piece.clone(), from, to);
             if self.player_in_check() {
+                // in theory if enpassant could not be in check anymore
                 if in_check {
                     println!("Invalid move while you are in check! go again");
                 } else {
@@ -422,19 +430,19 @@ impl<'a> Game<'a> {
     }
 
     fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
+        if self.tick() {
+            return true;
+        }
         let piece = self.get(from);
         let conquered = self.get(to);
         let move_status = piece.clone().unwrap().valid_move(from, to, self);
-        assert_ne!(move_status, Move::Invalid, "Invalid move!");
+        assert!(move_status.is_valid(), "Invalid move!");
         assert_eq!(
             piece.clone().unwrap().player(),
             self.current_player,
             "You must move one of your own pieces!"
         );
         let mut half_move = false;
-        if self.tick() {
-            return true;
-        }
         if let Some(conquered) = conquered.clone() {
             assert_ne!(
                 conquered.player(),
@@ -456,10 +464,6 @@ impl<'a> Game<'a> {
         //     println!("Moved from {:?} to {:?}", from, to);
         //     panic!("Wait you can't put yourself in check!");
         // }
-        assert!(
-            !self.player_in_check(),
-            "Wait you can't put yourself in check!"
-        );
         self.set_last_double(None);
         match move_status {
             Move::Normal => (),
@@ -484,14 +488,21 @@ impl<'a> Game<'a> {
             self.half_move_clock = 0;
         }
         self.set_moved(piece, from, to);
+        assert!(
+            !self.player_in_check(),
+            "Wait you can't put yourself in check!"
+        );
         self.current_player = self.current_player.other();
         false
     }
 
-    // fn evaluate(&mut self) -> f32 {
-    //     let data = self.to_matrix();
-    //     self.model.as_ref().unwrap().run_inference(vec!(data)).unwrap()[0]
-    // }
+    fn evaluate(&mut self) -> f32 {
+        if let Some(model) = self.model {
+            model.run_inference(&vec!(self.to_matrix())).unwrap()[0]
+        } else {
+            self.get_piece_scores() as f32
+        }
+    }
 
     fn to_matrix(&mut self) -> Matrix {
         let mut data = [[[0.0; 8]; 8]; 13];
@@ -749,13 +760,10 @@ impl<'a> Game<'a> {
     }
 
     fn is_current_player(&self, from: (u8, u8)) -> bool {
-        let spot = self.get(from);
-        if spot.is_none() {
-            return false;
-        }
-        match spot.unwrap().player() {
-            Player::One => matches!(self.current_player, Player::One),
-            Player::Two => matches!(self.current_player, Player::Two),
+        if let Some(spot) = self.get(from) {
+            self.current_player == spot.player()
+        } else {
+            false
         }
     }
 
