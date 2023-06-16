@@ -2,6 +2,7 @@ import onnx
 import torch
 from onnx2pytorch import ConvertModel
 import tf2onnx
+import sys
 # not included in requirements.txt because there is a version conflict with tensorflow
 
 def convert_onnx_to_pytorch(onnx_model_path, pytorch_model_path):
@@ -20,7 +21,7 @@ if __name__ == "__main__":
     #     print(f"Usage: {sys.argv[0]} <tensorflow_model_path> <pytorch_model_path>")
     #     sys.exit(1)
     
-    if len(sys.argv) == 3
+    if len(sys.argv) == 3:
         onnx_model_path = sys.argv[1]
         pytorch_model_path = sys.argv[2]
     else:

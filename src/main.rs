@@ -64,7 +64,7 @@ fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option
         // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
         game_over = game.turn();
     }    
-    game.play_again()
+    play_again()
 }
 
 fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool) {
@@ -90,4 +90,11 @@ fn heuristic_self_play(search_depth: Option<u8>) {
     while !game_over {
         game_over = game.turn();
     }
+}
+
+fn play_again() -> bool {
+    println!("Play again? (y/n)");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    input.trim().to_ascii_lowercase() == "y"
 }

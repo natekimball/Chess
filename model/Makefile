@@ -4,10 +4,6 @@ train:
 clean:
 	rm *.err *.out
 
-onnx:
-	python -m tf2onnx.convert --saved-model tf_saved_model --opset 17 --output model.onnx; \
-	python convert.py
-
 results:
 	find . -name "*.out" | while read file; \
 		do if [[ $$(fgrep val_loss $$file) ]]; \
@@ -39,6 +35,10 @@ squeue:
 
 scancel:
 	scancel -u $$USER
+
+onnx:
+	python -m tf2onnx.convert --saved-model tf_saved_model --opset 17 --output model.onnx; \
+	python convert.py
 
 # fgrep -E val_loss -E Epoch $$file
 # find . -name "*.out" | while read file; do if fgrep val_loss "$file" >nul; then echo "$file" fi; done

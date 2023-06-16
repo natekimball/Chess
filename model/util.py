@@ -86,7 +86,7 @@ def fen_to_mat(fen):
             c -= 1
             if c < 0:
                 break
-    return mat.tolist()
+    return mat
 
 def evaluation_to_int(evaluation):
     if evaluation.find('\ufeff') != -1:
