@@ -1,4 +1,4 @@
-extern crate tensorflow;
+// extern crate tensorflow;
 mod game;
 mod piece;
 mod king;
@@ -20,9 +20,9 @@ use player::Player;
 fn main() {
     let args: Vec<String> = args().collect();
     let two_player = args.contains(&"--2p".to_string());
-    let computer_player = if args.contains(&String::from("--black")) {Some(Player::Two)} else {Some(Player::One)};
+    let computer_player = if args.contains(&String::from("--black")) {Some(Player::One)} else {Some(Player::Two)};
     let self_play = args.contains(&String::from("--self-play"));
-    let heuristic = args.contains(&String::from("--heuristic"));
+    let heuristic = args.contains(&String::from("--heuristic")) || args.contains(&String::from("-h"));
     let epsilon_greedy = args.contains(&String::from("--epsilon-greedy"));
     let search_depth = if args.contains(&String::from("--depth")) {
         Some(args[args.iter().position(|x| x == "--depth").unwrap() + 1].parse::<u8>().unwrap())

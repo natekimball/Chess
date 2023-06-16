@@ -14,7 +14,7 @@ use rand::{Rng, seq::SliceRandom, distributions::Uniform, prelude::Distribution}
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     cmp::{max, min},
-    fmt::{Display, Error, Formatter},
+    fmt::{Display, Error, Formatter, format},
     io, collections::HashMap,
 };
 
@@ -56,7 +56,8 @@ pub struct Game<'a> {
     search_depth: u8,
     epsilon_greedy: bool,
     epsilon: f64,
-    epsilon_decay_rate: f64
+    epsilon_decay_rate: f64,
+    allow_hints: bool
 }
 
 impl<'a> Game<'a> {
@@ -66,7 +67,8 @@ impl<'a> Game<'a> {
         rl_training: bool,
         model: &'a Option<Model>,
         search_depth: Option<u8>,
-        epsilon_greedy: bool
+        epsilon_greedy: bool,
+        allow_hints: bool
     ) -> Self {
         Self {
             board: setup_board(),
@@ -95,12 +97,13 @@ impl<'a> Game<'a> {
             search_depth: search_depth.unwrap_or(DEFAULT_SEARCH_DEPTH),
             epsilon_greedy,
             epsilon: INITIAL_EPSILON,
-            epsilon_decay_rate: EPSILON_DECAY_RATE
+            epsilon_decay_rate: EPSILON_DECAY_RATE,
+            allow_hints
         }
     }
 
     pub fn two_player_game() -> Self {
-        Self::new(true, None, false, &None, None,false)
+        Self::new(true, None, false, &None, None,false, false)
     }
 
     pub fn single_player_game(
@@ -108,11 +111,11 @@ impl<'a> Game<'a> {
         model: &'a Option<Model>,
         search_depth: Option<u8>,
     ) -> Self {
-        Self::new(false, player, false, model, search_depth, false)
+        Self::new(false, player, false, model, search_depth, false, true)
     }
 
     pub fn self_play(model: &'a Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool) -> Self {
-        Self::new(false, None, true, model, search_depth, epsilon_greedy)
+        Self::new(false, None, true, model, search_depth, epsilon_greedy, false)
     }
 
     fn get_best_move(&mut self) -> Option<((u8, u8), (u8, u8))> {
@@ -136,7 +139,11 @@ impl<'a> Game<'a> {
         //         let mut game = self.clone();
         //         threads.push(thread::spawn(move || {
         //             game.move_piece(from, to);
-        //             ((from,to),game.tree_search(SEARCH_DEPTH-1, false, f32::MIN, f32::MAX))
+        //             let (maximizing, alpha, beta) = match game.current_player {
+        //                 Player::One => (true, f32::MIN, f32::MAX),
+        //                 Player::Two => (false, f32::MAX, f32::MIN),
+        //             };
+        //             ((from,to),game.tree_search(SEARCH_DEPTH-1, maximizing, alpha, beta))
         //         }));
         //     }
         //     for thread in threads {
@@ -157,7 +164,7 @@ impl<'a> Game<'a> {
         let move_evals = possible_moves.par_iter().map(|&(from, to)| {
             let mut game = self.clone();
             game.move_piece(from, to);
-            let (maximizing, alpha, beta) = match self.current_player {
+            let (maximizing, alpha, beta) = match game.current_player {
                 Player::One => (true, f32::MIN, f32::MAX),
                 Player::Two => (false, f32::MAX, f32::MIN),
             };
@@ -203,16 +210,20 @@ impl<'a> Game<'a> {
             .map(|game| game.clone().to_matrix())
             .collect::<Vec<Matrix>>();
 
+        let (maximizing, alpha, beta) = match self.current_player.other() {
+            Player::One => (true, f32::MIN, f32::MAX),
+            Player::Two => (false, f32::MAX, f32::MIN),
+        };
         let amplified_scores = games
             .par_iter()
             .map(|game| {
                 game.clone()
-                    .tree_search(self.search_depth - 1, false, f32::MIN, f32::MAX)
+                    .tree_search(self.search_depth - 1, maximizing, alpha, beta)
             })
             .collect::<Vec<f32>>();
 
         let mut best_move = possible_moves[0];
-        let mut best_score = if self.current_player == Player::One {
+        let mut best_score = if self.current_player.is_maximizing() {
             f32::MIN
         } else {
             f32::MAX
@@ -926,6 +937,11 @@ impl<'a> Game<'a> {
                 self.current_player.other()
             );
             std::process::exit(0);
+        } else if input.to_ascii_lowercase().trim() == "hint" && self.allow_hints {
+            let best_move = self.get_best_move().unwrap();
+            println!("Hint, your best move is: {} -> {}", format_coord(best_move.0), format_coord(best_move.1));
+            println!("Enter your move (e.g. a2 a4):");
+            return self.get_move();
         }
         let mut input = input.split_whitespace();
         let from = input.next();

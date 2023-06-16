@@ -68,6 +68,7 @@ impl Piece for King {
 }
 
 impl King {
+    // TODO: can't move through check to castle
     pub(crate) fn can_castle_left(&self, position: (u8,u8), game: &mut Game) -> bool {
         let y = match self.player {
             Player::One => 7,
@@ -76,11 +77,14 @@ impl King {
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check(self.player) {
             return false;
         }
-        if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
-            if let Some(rook) = game.get((0,y)) {
-                if rook.is_type::<Rook>() {
-                    if !game.has_left_rook_moved(self.player) {
-                        return !game.try_move_for_check((4,y), (2,y), self.player);
+        // if game.square_is_none((3,y)) && game.square_is_none((2,y)) && game.square_is_none((1,y)) {
+        if [3,2,1].iter().all(|x| game.square_is_none((*x,y))) {
+            if [3,2,1].iter().all(|x| !game.try_move_for_check((4,y), (*x,y), self.player)) {
+                if let Some(rook) = game.get((0,y)) {
+                    if rook.is_type::<Rook>() {
+                        if !game.has_left_rook_moved(self.player) {
+                            return !game.try_move_for_check((4,y), (2,y), self.player);
+                        }
                     }
                 }
             }
@@ -96,11 +100,14 @@ impl King {
         if game.has_king_moved(self.player) || position != (4,y) || game.in_check(self.player) {
             return false;
         }
-        if game.square_is_none((5,y)) && game.square_is_none((6,y)) {
-            if let Some(rook) = game.get((7,y)) {
-                if rook.is_type::<Rook>() {
-                    if !game.has_right_rook_moved(self.player) {
-                        return !game.try_move_for_check((4,y), (6,y), self.player);
+        // if game.square_is_none((5,y)) && game.square_is_none((6,y)) {
+        if [5,6].iter().all(|&x| game.square_is_none((x,y))) {
+            if [5,6].iter().all(|&x| !game.try_move_for_check((4,y), (x,y), self.player)) {
+                if let Some(rook) = game.get((7,y)) {
+                    if rook.is_type::<Rook>() {
+                        if !game.has_right_rook_moved(self.player) {
+                            return !game.try_move_for_check((4,y), (6,y), self.player);
+                        }
                     }
                 }
             }
