@@ -119,6 +119,7 @@ impl<'a> Game<'a> {
     }
 
     fn get_best_move(&mut self) -> Option<((u8, u8), (u8, u8))> {
+        self.in_simulation = true;
         let now = std::time::SystemTime::now();
         // let possible_moves = self.get_moves_sorted(true);
         let possible_moves = self.get_possible_moves(self.current_player);
@@ -161,18 +162,23 @@ impl<'a> Game<'a> {
         //         }
         //     }
         // }
+        let (maximizing, alpha, beta) = match self.current_player.other() {
+            Player::One => (true, f32::MIN, f32::MAX),
+            Player::Two => (false, f32::MAX, f32::MIN),
+        };
         let move_evals = possible_moves.par_iter().map(|&(from, to)| {
             let mut game = self.clone();
             game.move_piece(from, to);
-            let (maximizing, alpha, beta) = match game.current_player {
-                Player::One => (true, f32::MIN, f32::MAX),
-                Player::Two => (false, f32::MAX, f32::MIN),
-            };
             (
                 (from, to),
                 game.tree_search(self.search_depth - 1, maximizing, alpha, beta),
             )
         });
+
+        move_evals.clone().for_each(|(mov, score)| {
+            print!("{} -> {} : {}\n", format_coord(mov.0), format_coord(mov.1), score);
+        });
+
         let best_move = if self.current_player.is_maximizing() {
             move_evals
                 .max_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
@@ -189,6 +195,7 @@ impl<'a> Game<'a> {
             "Time to evaluate best move to depth of {}: {:?}",
             self.search_depth, elapsed
         );
+        self.in_simulation = false;
         Some(best_move)
     }
 
@@ -217,10 +224,6 @@ impl<'a> Game<'a> {
         let amplified_scores = games
             .par_iter()
             .map(|game| {
-                let (maximizing, alpha, beta) = match game.current_player {
-                    Player::One => (true, f32::MIN, f32::MAX),
-                    Player::Two => (false, f32::MAX, f32::MIN),
-                };
                 game.clone()
                     .tree_search(self.search_depth - 1, maximizing, alpha, beta)
             })
@@ -326,6 +329,7 @@ impl<'a> Game<'a> {
     pub fn turn(&mut self) -> bool {
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
+
         if self.rl_training {
             if self.model.is_some() {
                 return self.rl_training_move();
@@ -420,7 +424,6 @@ impl<'a> Game<'a> {
                     self.promote_piece(to);
                 }
             }
-            self.set_moved(piece.clone(), from, to);
             if half_move {
                 self.half_move_clock = 0;
             }
@@ -453,6 +456,7 @@ impl<'a> Game<'a> {
             self.current_player,
             "You must move one of your own pieces!"
         );
+        assert!(self.get_pieces(self.current_player).contains(&from));
         let mut half_move = false;
         if let Some(conquered) = conquered.clone() {
             assert_ne!(
@@ -467,8 +471,10 @@ impl<'a> Game<'a> {
             self.set(to, piece.clone());
             self.set(from, None);
         }
-        // debug statements
         self.set_moved(piece.clone(), from, to);
+        assert!(!self.get_pieces(self.current_player).contains(&from));
+        assert!(self.get_pieces(self.current_player).contains(&to));
+        // debug statements
         // if self.player_in_check() {
         //     println!("Wait you can't put yourself in check!");
         //     println!("{self}");
@@ -489,7 +495,7 @@ impl<'a> Game<'a> {
             }
             Move::Invalid => unreachable!(),
         }
-        if piece.clone().unwrap().is_type::<Pawn>() {
+        if piece.unwrap().is_type::<Pawn>() {
             half_move = true;
             if to.1 == 7 || to.1 == 0 {
                 self.set(to, Some(Box::new(Queen::new(self.current_player))));
@@ -498,7 +504,6 @@ impl<'a> Game<'a> {
         if half_move {
             self.half_move_clock = 0;
         }
-        self.set_moved(piece, from, to);
         assert!(
             !self.player_in_check(),
             "Wait you can't put yourself in check!"
@@ -516,6 +521,7 @@ impl<'a> Game<'a> {
     }
 
     fn to_matrix(&mut self) -> Matrix {
+        // TODO: use match statements with names
         let mut data = [[[0.0; 8]; 8]; 13];
         for &position in self.get_pieces(Player::One) {
             let piece = self.get(position).unwrap();
@@ -596,7 +602,6 @@ impl<'a> Game<'a> {
     }
 
     pub fn algorithm_move(&mut self) -> bool {
-        self.in_simulation = true;
         let best_move = self.get_best_move();
         if best_move.is_none() {
             // assert!(!self.check());
@@ -615,7 +620,6 @@ impl<'a> Game<'a> {
             format_coord(from),
             format_coord(to)
         );
-        self.in_simulation = false;
         if self.move_piece(from, to) {
             println!("{self}");
             println!("Game over!");
@@ -759,14 +763,20 @@ impl<'a> Game<'a> {
             return 0;
         }
         let mut score = 0;
-        for piece in self.p1_pieces.iter() {
-            let piece = self.get(*piece).unwrap();
-            score += piece.value();
-        }
-        for piece in self.p2_pieces.iter() {
-            let piece = self.get(*piece).unwrap();
-            score -= piece.value();
-        }
+        // for piece in self.p1_pieces.iter() {
+        //     let piece = self.get(*piece).unwrap();
+        //     score += piece.value();
+        // }
+        // for piece in self.p2_pieces.iter() {
+        //     let piece = self.get(*piece).unwrap();
+        //     score -= piece.value();
+        // }
+        self.p1_pieces.iter().for_each(|&piece| {
+            score += self.get(piece).unwrap().value();
+        });
+        self.p2_pieces.iter().for_each(|&piece| {
+            score -= self.get(piece).unwrap().value();
+        });
         score
     }
 
@@ -776,6 +786,7 @@ impl<'a> Game<'a> {
         } else {
             false
         }
+        // self.get(from).is_some_and(|spot| self.current_player == spot.player())
     }
 
     pub(crate) fn check_horiz(&self, from: (u8, u8), to: (u8, u8)) -> bool {
@@ -817,6 +828,7 @@ impl<'a> Game<'a> {
         } else {
             false
         }
+        // self.get(to).is_some_and(|piece| piece.player() != player)
     }
 
     pub(crate) fn take(&mut self, to: (u8, u8), new_piece: Square) {
@@ -1191,18 +1203,29 @@ impl<'a> Game<'a> {
         }
     }
 
+    // fn debug_pieces(&self) {
+    //     print!("Player 1: ");
+    //     self.p1_pieces.iter().for_each(|&x| print!("{}, ", format_coord(x)));
+    //     println!("");
+    //     print!("Player 2: ");
+    //     self.p2_pieces.iter().for_each(|&x| print!("{}, ", format_coord(x)));
+    //     println!("");
+    // }
+
     fn update_piece(&mut self, from: (u8, u8), to: (u8, u8)) {
         match self.current_player {
             Player::One => {
-                self.p1_pieces.retain(|x| *x != from);
+                self.p1_pieces.retain(|&x| x != from);
                 self.p1_pieces.push(to);
+                // self.p2_pieces.retain(|x| *x != to);
             }
             Player::Two => {
-                self.p2_pieces.retain(|x| *x != from);
+                self.p2_pieces.retain(|&x| x != from);
                 self.p2_pieces.push(to);
+                // self.p1_pieces.retain(|x| *x != to);
+                // should this be here or in take
             }
         }
-        // self.remove_piece(from);
     }
 
     pub(crate) fn set_player_pieces(&mut self, player: Player, pieces: Vec<(u8, u8)>) {
@@ -1211,7 +1234,7 @@ impl<'a> Game<'a> {
             Player::Two => self.p2_pieces = pieces,
         }
     }
-
+    
     fn stalemate(&mut self) -> bool {
         self.get_possible_moves(self.current_player).is_empty()
     }
@@ -1341,214 +1364,214 @@ impl<'a> Game<'a> {
         // self.model.clone().unwrap().run_inference(games).unwrap()
     }
 
-    fn matrix_from_move(&mut self, &(from, to): &((u8, u8), (u8, u8))) -> Matrix {
-        if self.player_in_check() {
-            println!("You're in check!");
-        }
-        let half_move_clock = self.half_move_clock;
-        let full_move_clock = self.full_move_clock;
-        assert!(self.tick(), "Half move clock is up, draw!");
-        assert!(self.is_current_player(from));
-        let mut half_move = false;
-        let piece = self.get(from);
-        let conquered = self.get(to);
-        let move_status = piece.clone().unwrap().valid_move(from, to, self);
-        assert!(move_status.is_valid());
-        // let board: Board = self.board.clone();
-        if let Some(conquered) = conquered.clone() {
-            assert!(conquered.player() != self.current_player);
-            half_move = true;
-            self.take(to, piece.clone());
-            self.set(from, None);
-        } else {
-            self.set(to, piece.clone());
-            self.set(from, None);
-        }
-        let (p1_pieces, p2_pieces) = (
-            self.get_pieces(Player::One).clone(),
-            self.get_pieces(Player::Two).clone(),
-        );
-        self.set_moved(piece.clone(), from, to);
-        assert!(
-            !self.player_in_check(),
-            "Wait you can't put yourself in check! go again."
-        );
-        let last_double = self.last_double;
-        self.set_last_double(None);
-        let mut en_passant_piece = None;
-        match move_status {
-            Move::Normal => (),
-            Move::Double(position) => {
-                self.set_last_double(Some(position));
-            }
-            Move::Castle => {
-                self.castle(to);
-            }
-            Move::EnPassant(position) => {
-                en_passant_piece = self.get(position);
-                self.take(position, None);
-            }
-            Move::Invalid => unreachable!(),
-        }
-        let mut promoted = false;
-        if piece.clone().unwrap().is_type::<Pawn>() {
-            half_move = true;
-            if to.1 == 7 || to.1 == 0 {
-                self.promote_piece(to);
-                promoted = true;
-            }
-        }
-        self.set_moved(piece.clone(), from, to);
-        if half_move {
-            self.half_move_clock = 0;
-        }
-        let matrix = self.to_matrix();
-        // self.set_board(board);
-        self.half_move_clock = half_move_clock;
-        self.full_move_clock = full_move_clock;
-        self.set(from, self.get(to));
-        self.set(to, conquered);
-        match move_status {
-            Move::Normal => (),
-            Move::Double(_) => {
-                self.set_last_double(last_double);
-            }
-            Move::Castle => {
-                self.castle(to);
-                let (rook, rook_to) = match to {
-                    (2, y) => ((3, y), (0, y)),
-                    (6, y) => ((5, y), (7, y)),
-                    _ => unreachable!(),
-                };
-                self.set(rook_to, self.get(rook));
-                self.set(rook, None);
-            }
-            Move::EnPassant(position) => self.set(position, en_passant_piece),
-            Move::Invalid => unreachable!(),
-        }
-        if promoted {
-            self.set(to, piece)
-        }
-        self.set_pieces(p1_pieces, p2_pieces);
-        matrix
-    }
+    // fn matrix_from_move(&mut self, &(from, to): &((u8, u8), (u8, u8))) -> Matrix {
+    //     if self.player_in_check() {
+    //         println!("You're in check!");
+    //     }
+    //     let half_move_clock = self.half_move_clock;
+    //     let full_move_clock = self.full_move_clock;
+    //     assert!(self.tick(), "Half move clock is up, draw!");
+    //     assert!(self.is_current_player(from));
+    //     let mut half_move = false;
+    //     let piece = self.get(from);
+    //     let conquered = self.get(to);
+    //     let move_status = piece.clone().unwrap().valid_move(from, to, self);
+    //     assert!(move_status.is_valid());
+    //     // let board: Board = self.board.clone();
+    //     if let Some(conquered) = conquered.clone() {
+    //         assert!(conquered.player() != self.current_player);
+    //         half_move = true;
+    //         self.take(to, piece.clone());
+    //         self.set(from, None);
+    //     } else {
+    //         self.set(to, piece.clone());
+    //         self.set(from, None);
+    //     }
+    //     let (p1_pieces, p2_pieces) = (
+    //         self.get_pieces(Player::One).clone(),
+    //         self.get_pieces(Player::Two).clone(),
+    //     );
+    //     self.set_moved(piece.clone(), from, to);
+    //     assert!(
+    //         !self.player_in_check(),
+    //         "Wait you can't put yourself in check! go again."
+    //     );
+    //     let last_double = self.last_double;
+    //     self.set_last_double(None);
+    //     let mut en_passant_piece = None;
+    //     match move_status {
+    //         Move::Normal => (),
+    //         Move::Double(position) => {
+    //             self.set_last_double(Some(position));
+    //         }
+    //         Move::Castle => {
+    //             self.castle(to);
+    //         }
+    //         Move::EnPassant(position) => {
+    //             en_passant_piece = self.get(position);
+    //             self.take(position, None);
+    //         }
+    //         Move::Invalid => unreachable!(),
+    //     }
+    //     let mut promoted = false;
+    //     if piece.clone().unwrap().is_type::<Pawn>() {
+    //         half_move = true;
+    //         if to.1 == 7 || to.1 == 0 {
+    //             self.promote_piece(to);
+    //             promoted = true;
+    //         }
+    //     }
+    //     self.set_moved(piece.clone(), from, to);
+    //     if half_move {
+    //         self.half_move_clock = 0;
+    //     }
+    //     let matrix = self.to_matrix();
+    //     // self.set_board(board);
+    //     self.half_move_clock = half_move_clock;
+    //     self.full_move_clock = full_move_clock;
+    //     self.set(from, self.get(to));
+    //     self.set(to, conquered);
+    //     match move_status {
+    //         Move::Normal => (),
+    //         Move::Double(_) => {
+    //             self.set_last_double(last_double);
+    //         }
+    //         Move::Castle => {
+    //             self.castle(to);
+    //             let (rook, rook_to) = match to {
+    //                 (2, y) => ((3, y), (0, y)),
+    //                 (6, y) => ((5, y), (7, y)),
+    //                 _ => unreachable!(),
+    //             };
+    //             self.set(rook_to, self.get(rook));
+    //             self.set(rook, None);
+    //         }
+    //         Move::EnPassant(position) => self.set(position, en_passant_piece),
+    //         Move::Invalid => unreachable!(),
+    //     }
+    //     if promoted {
+    //         self.set(to, piece)
+    //     }
+    //     self.set_pieces(p1_pieces, p2_pieces);
+    //     matrix
+    // }
 
-    fn piece_score_from_move(&mut self, &(from, to): &((u8, u8), (u8, u8))) -> i32 {
-        if self.player_in_check() {
-            println!("You're in check!");
-        }
-        let half_move_clock = self.half_move_clock;
-        let full_move_clock = self.full_move_clock;
-        assert!(!self.tick(), "Half move clock is up, draw!");
-        assert!(self.is_current_player(from));
-        let mut half_move = false;
-        let piece = self.get(from);
-        let conquered = self.get(to);
-        let move_status = piece.clone().unwrap().valid_move(from, to, self);
-        assert!(move_status.is_valid());
-        // let board: Board = self.board.clone();
-        if let Some(conquered) = conquered.clone() {
-            assert!(conquered.player() != self.current_player);
-            half_move = true;
-            self.take(to, piece.clone());
-            self.set(from, None);
-        } else {
-            self.set(to, piece.clone());
-            self.set(from, None);
-        }
-        let (p1_pieces, p2_pieces) = (
-            self.get_pieces(Player::One).clone(),
-            self.get_pieces(Player::Two).clone(),
-        );
-        self.set_moved(piece.clone(), from, to);
-        assert!(
-            !self.player_in_check(),
-            "Wait you can't put yourself in check! go again."
-        );
-        // if self.player_in_check() {
-        //     println!("Wait you can't put yourself in check!");
-        //     println!("{self}");
-        //     println!("Moved from {:?} to {:?}", from, to);
-        //     panic!("Wait you can't put yourself in check!");
-        // }
-        let last_double = self.last_double;
-        self.set_last_double(None);
-        let mut en_passant_piece = None;
-        match move_status {
-            Move::Normal => (),
-            Move::Double(position) => {
-                self.set_last_double(Some(position));
-            }
-            Move::Castle => {
-                self.castle(to);
-            }
-            Move::EnPassant(position) => {
-                en_passant_piece = self.get(position);
-                self.take(position, None);
-            }
-            Move::Invalid => unreachable!(),
-        }
-        let mut promoted = false;
-        if piece.clone().unwrap().is_type::<Pawn>() {
-            half_move = true;
-            if to.1 == 7 || to.1 == 0 {
-                self.promote_piece(to);
-                promoted = true;
-            }
-        }
-        self.set_moved(piece.clone(), from, to);
-        if half_move {
-            self.half_move_clock = 0;
-        }
-        let score = self.get_piece_scores();
-        // self.set_board(board);
-        self.half_move_clock = half_move_clock;
-        self.full_move_clock = full_move_clock;
-        self.set(from, self.get(to));
-        self.set(to, conquered);
-        match move_status {
-            Move::Normal => (),
-            Move::Double(_) => {
-                self.set_last_double(last_double);
-            }
-            Move::Castle => {
-                self.castle(to);
-                let (rook, rook_to) = match to {
-                    (2, y) => ((3, y), (0, y)),
-                    (6, y) => ((5, y), (7, y)),
-                    _ => unreachable!(),
-                };
-                self.set(rook_to, self.get(rook));
-                self.set(rook, None);
-            }
-            Move::EnPassant(position) => self.set(position, en_passant_piece),
-            Move::Invalid => unreachable!(),
-        }
-        if promoted {
-            self.set(to, piece)
-        }
-        self.set_pieces(p1_pieces, p2_pieces);
-        score
-    }
+    // fn piece_score_from_move(&mut self, &(from, to): &((u8, u8), (u8, u8))) -> i32 {
+    //     if self.player_in_check() {
+    //         println!("You're in check!");
+    //     }
+    //     let half_move_clock = self.half_move_clock;
+    //     let full_move_clock = self.full_move_clock;
+    //     assert!(!self.tick(), "Half move clock is up, draw!");
+    //     assert!(self.is_current_player(from));
+    //     let mut half_move = false;
+    //     let piece = self.get(from);
+    //     let conquered = self.get(to);
+    //     let move_status = piece.clone().unwrap().valid_move(from, to, self);
+    //     assert!(move_status.is_valid());
+    //     // let board: Board = self.board.clone();
+    //     if let Some(conquered) = conquered.clone() {
+    //         assert!(conquered.player() != self.current_player);
+    //         half_move = true;
+    //         self.take(to, piece.clone());
+    //         self.set(from, None);
+    //     } else {
+    //         self.set(to, piece.clone());
+    //         self.set(from, None);
+    //     }
+    //     let (p1_pieces, p2_pieces) = (
+    //         self.get_pieces(Player::One).clone(),
+    //         self.get_pieces(Player::Two).clone(),
+    //     );
+    //     self.set_moved(piece.clone(), from, to);
+    //     assert!(
+    //         !self.player_in_check(),
+    //         "Wait you can't put yourself in check! go again."
+    //     );
+    //     // if self.player_in_check() {
+    //     //     println!("Wait you can't put yourself in check!");
+    //     //     println!("{self}");
+    //     //     println!("Moved from {:?} to {:?}", from, to);
+    //     //     panic!("Wait you can't put yourself in check!");
+    //     // }
+    //     let last_double = self.last_double;
+    //     self.set_last_double(None);
+    //     let mut en_passant_piece = None;
+    //     match move_status {
+    //         Move::Normal => (),
+    //         Move::Double(position) => {
+    //             self.set_last_double(Some(position));
+    //         }
+    //         Move::Castle => {
+    //             self.castle(to);
+    //         }
+    //         Move::EnPassant(position) => {
+    //             en_passant_piece = self.get(position);
+    //             self.take(position, None);
+    //         }
+    //         Move::Invalid => unreachable!(),
+    //     }
+    //     let mut promoted = false;
+    //     if piece.clone().unwrap().is_type::<Pawn>() {
+    //         half_move = true;
+    //         if to.1 == 7 || to.1 == 0 {
+    //             self.promote_piece(to);
+    //             promoted = true;
+    //         }
+    //     }
+    //     self.set_moved(piece.clone(), from, to);
+    //     if half_move {
+    //         self.half_move_clock = 0;
+    //     }
+    //     let score = self.get_piece_scores();
+    //     // self.set_board(board);
+    //     self.half_move_clock = half_move_clock;
+    //     self.full_move_clock = full_move_clock;
+    //     self.set(from, self.get(to));
+    //     self.set(to, conquered);
+    //     match move_status {
+    //         Move::Normal => (),
+    //         Move::Double(_) => {
+    //             self.set_last_double(last_double);
+    //         }
+    //         Move::Castle => {
+    //             self.castle(to);
+    //             let (rook, rook_to) = match to {
+    //                 (2, y) => ((3, y), (0, y)),
+    //                 (6, y) => ((5, y), (7, y)),
+    //                 _ => unreachable!(),
+    //             };
+    //             self.set(rook_to, self.get(rook));
+    //             self.set(rook, None);
+    //         }
+    //         Move::EnPassant(position) => self.set(position, en_passant_piece),
+    //         Move::Invalid => unreachable!(),
+    //     }
+    //     if promoted {
+    //         self.set(to, piece)
+    //     }
+    //     self.set_pieces(p1_pieces, p2_pieces);
+    //     score
+    // }
 
-    fn get_moves_sorted(&mut self, descending: bool) -> Vec<((u8, u8), (u8, u8))> {
-        let moves = self.get_possible_moves(self.current_player);
-        let evals = self.evaluate_moves(&moves);
-        let mut move_evals = moves
-            .into_iter()
-            .zip(evals.into_iter())
-            .collect::<Vec<(((u8, u8), (u8, u8)), f32)>>();
-        if descending {
-            move_evals.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        } else {
-            move_evals.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        }
-        move_evals
-            .iter()
-            .map(|&(mov, _)| mov)
-            .take(SEARCH_BREADTH)
-            .collect::<Vec<((u8, u8), (u8, u8))>>()
-    }
+    // fn get_moves_sorted(&mut self, descending: bool) -> Vec<((u8, u8), (u8, u8))> {
+    //     let moves = self.get_possible_moves(self.current_player);
+    //     let evals = self.evaluate_moves(&moves);
+    //     let mut move_evals = moves
+    //         .into_iter()
+    //         .zip(evals.into_iter())
+    //         .collect::<Vec<(((u8, u8), (u8, u8)), f32)>>();
+    //     if descending {
+    //         move_evals.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    //     } else {
+    //         move_evals.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    //     }
+    //     move_evals
+    //         .iter()
+    //         .map(|&(mov, _)| mov)
+    //         .take(SEARCH_BREADTH)
+    //         .collect::<Vec<((u8, u8), (u8, u8))>>()
+    // }
 
     #[cfg(test)]
     pub(crate) fn set_player(&mut self, player: Player) {
