@@ -46,7 +46,7 @@ pub struct Game<'a> {
     p1_taken: [u8; 5],
     p2_taken: [u8; 5],
     half_move_clock: u8,
-    full_move_clock: u8,
+    full_move_clock: u32,
     in_simulation: bool,
     two_player: bool,
     model: &'a Option<Model>,
@@ -57,7 +57,8 @@ pub struct Game<'a> {
     epsilon_greedy: bool,
     epsilon: f64,
     epsilon_decay_rate: f64,
-    allow_hints: bool
+    allow_hints: bool,
+    winner: Option<Player>
 }
 
 impl<'a> Game<'a> {
@@ -98,7 +99,8 @@ impl<'a> Game<'a> {
             epsilon_greedy,
             epsilon: INITIAL_EPSILON,
             epsilon_decay_rate: EPSILON_DECAY_RATE,
-            allow_hints
+            allow_hints,
+            winner: None
         }
     }
 
@@ -124,11 +126,6 @@ impl<'a> Game<'a> {
         // let possible_moves = self.get_moves_sorted(true);
         let possible_moves = self.get_possible_moves(self.current_player);
         if possible_moves.is_empty() {
-            println!(
-                "No possible moves for player {}!",
-                self.current_player.number()
-            );
-            println!("Stalemate!");
             return None;
         }
         // let mut best_move = possible_moves[0];
@@ -140,11 +137,7 @@ impl<'a> Game<'a> {
         //         let mut game = self.clone();
         //         threads.push(thread::spawn(move || {
         //             game.move_piece(from, to);
-        //             let (maximizing, alpha, beta) = match game.current_player {
-        //                 Player::One => (true, f32::MIN, f32::MAX),
-        //                 Player::Two => (false, f32::MAX, f32::MIN),
-        //             };
-        //             ((from,to),game.tree_search(SEARCH_DEPTH-1, maximizing, alpha, beta))
+        //             ((from,to),game.tree_search(SEARCH_DEPTH-1, game.is_maximizing(), f32::MIN, f32::MAX))
         //         }));
         //     }
         //     for thread in threads {
@@ -162,34 +155,46 @@ impl<'a> Game<'a> {
         //         }
         //     }
         // }
-        let (maximizing, alpha, beta) = match self.current_player.other() {
-            Player::One => (true, f32::MIN, f32::MAX),
-            Player::Two => (false, f32::MAX, f32::MIN),
-        };
         let move_evals = possible_moves.par_iter().map(|&(from, to)| {
             let mut game = self.clone();
             game.move_piece(from, to);
             (
                 (from, to),
-                game.tree_search(self.search_depth - 1, maximizing, alpha, beta),
+                game.minimax_search(self.search_depth - 1, game.current_player.is_maximizing(), f32::MIN, f32::MAX),
             )
         });
 
-        move_evals.clone().for_each(|(mov, score)| {
-            print!("{} -> {} : {}\n", format_coord(mov.0), format_coord(mov.1), score);
-        });
+        // move_evals.clone().for_each(|(mov, score)| {
+        //     print!("{} -> {} : {}\n", format_coord(mov.0), format_coord(mov.1), score);
+        // });
 
-        let best_move = if self.current_player.is_maximizing() {
-            move_evals
-                .max_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
+        // let best_move = if self.is_maximizing() {
+        //     move_evals
+        //         .max_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
+        //         .unwrap()
+        //         .0
+        // } else {
+        //     move_evals
+        //         .min_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
+        //         .unwrap()
+        //         .0
+        // };
+        let best_score = if self.is_maximizing() {
+            move_evals.clone()
+                .map(|(_, score)| score)
+                .max_by(|score1, score2| score1.partial_cmp(score2).unwrap())
                 .unwrap()
-                .0
         } else {
-            move_evals
-                .min_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
+            move_evals.clone()
+                .map(|(_, score)| score)
+                .min_by(|score1, score2| score1.partial_cmp(score2).unwrap())
                 .unwrap()
-                .0
         };
+        let best_moves = move_evals
+            .filter(|(_, score)| *score == best_score)
+            .map(|(mov, _)| mov)
+            .collect::<Vec<((u8, u8), (u8, u8))>>();
+        let best_move = best_moves.choose(&mut rand::thread_rng()).unwrap().clone();
         let elapsed = now.elapsed().unwrap();
         println!(
             "Time to evaluate best move to depth of {}: {:?}",
@@ -217,20 +222,16 @@ impl<'a> Game<'a> {
             .map(|game| game.clone().to_matrix())
             .collect::<Vec<Matrix>>();
 
-        let (maximizing, alpha, beta) = match self.current_player.other() {
-            Player::One => (true, f32::MIN, f32::MAX),
-            Player::Two => (false, f32::MAX, f32::MIN),
-        };
         let amplified_scores = games
             .par_iter()
             .map(|game| {
                 game.clone()
-                    .tree_search(self.search_depth - 1, maximizing, alpha, beta)
+                    .minimax_search(self.search_depth - 1, game.current_player.is_maximizing(), f32::MIN, f32::MAX)
             })
             .collect::<Vec<f32>>();
 
         let mut best_move = possible_moves[0];
-        let mut best_score = if self.current_player.is_maximizing() {
+        let mut best_score = if self.is_maximizing() {
             f32::MIN
         } else {
             f32::MAX
@@ -261,46 +262,43 @@ impl<'a> Game<'a> {
         best_move
     }
 
-    fn tree_search(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
+    fn minimax_search(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
         // the algorithm assumes a good evaluation model to approximate game state evaluations
         if self.half_move_clock_expired() {
             return 0.0;
         }
-        // if depth <= 1 {
+        // if depth <= 1 and self.model.is_some() {
         //     return self.last_level_minimax(maximizing, alpha, beta);
         // }
         if depth == 0 {
             return self.evaluate()
         }
-        // let moves = self.get_moves_sorted(maximizing);
         let moves = self.get_possible_moves(self.current_player);
+        let mut best_score;
         if maximizing {
-            let mut best = f32::MIN;
+            best_score = f32::MIN;
             for (from, to) in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                let score = game.tree_search(depth - 1, false, alpha, beta);
-                best = f32::max(best, score);
-                alpha = f32::max(alpha, score);
-                if beta <= alpha {
+                best_score = f32::max(best_score, game.minimax_search(depth - 1, false, alpha, beta));
+                alpha = f32::max(alpha, best_score);
+                if alpha >= beta {
                     break;
                 }
             }
-            return best;
         } else {
-            let mut best = f32::MAX;
+            best_score = f32::MAX;
             for (from, to) in moves {
                 let mut game = self.clone();
                 game.move_piece(from, to);
-                let score = game.tree_search(depth - 1, true, alpha, beta);
-                best = f32::min(best, score);
-                beta = f32::min(beta, score);
-                if beta <= alpha {
+                best_score = f32::min(best_score, game.minimax_search(depth - 1, true, alpha, beta));
+                beta = f32::min(beta, best_score);
+                if alpha >= beta {
                     break;
                 }
             }
-            return best;
         }
+        best_score
     }
 
     fn last_level_minimax(&mut self, maximizing: bool, alpha: f32, beta: f32) -> f32 {
@@ -327,6 +325,7 @@ impl<'a> Game<'a> {
     }
 
     pub fn turn(&mut self) -> bool {
+        self.assert_pieces();
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
 
@@ -443,6 +442,22 @@ impl<'a> Game<'a> {
         return false;
     }
 
+    // TODO: remove
+    fn assert_pieces(&self) {
+        for &piece in &self.p1_pieces {
+            let piece = self.get(piece).unwrap();
+            assert_eq!(piece.player(), Player::One);
+        }
+        for &piece in &self.p2_pieces {
+            let piece = self.get(piece).unwrap();
+            assert_eq!(piece.player(), Player::Two);
+        }
+        assert!(self.get(self.king_one).unwrap().is_type::<King>());
+        assert!(self.get(self.king_two).unwrap().is_type::<King>());
+        assert!(self.p2_taken.iter().sum::<u8>() + self.p1_pieces.len() as u8 == 16);
+        assert!(self.p1_taken.iter().sum::<u8>() + self.p2_pieces.len() as u8 == 16);
+    }
+
     fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
         if self.tick() {
             return true;
@@ -521,7 +536,6 @@ impl<'a> Game<'a> {
     }
 
     fn to_matrix(&mut self) -> Matrix {
-        // TODO: use match statements with names
         let mut data = [[[0.0; 8]; 8]; 13];
         for &position in self.get_pieces(Player::One) {
             let piece = self.get(position).unwrap();
@@ -712,16 +726,7 @@ impl<'a> Game<'a> {
             }
         }
         let (x, y) = king;
-        for (i, j) in [
-            (0, 1),
-            (1, 0),
-            (0, -1),
-            (-1, 0),
-            (1, 1),
-            (1, -1),
-            (-1, 1),
-            (-1, -1),
-        ] {
+        for (i, j) in [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)] {
             let (new_x, new_y) = (x as i8 + i, y as i8 + j);
             if new_x < 0 || new_x >= 8 || new_y < 0 || new_y >= 8 {
                 continue;
@@ -733,6 +738,7 @@ impl<'a> Game<'a> {
                 }
             }
         }
+        self.winner = Some(self.current_player.other());
         true
     }
 
@@ -753,30 +759,22 @@ impl<'a> Game<'a> {
 
     fn get_piece_scores(&mut self) -> i32 {
         if self.checkmate() {
-            return if self.current_player.is_maximizing() {
+            return if self.is_maximizing() {
                 i32::MIN
             } else {
                 i32::MAX
             }
         }
-        if self.half_move_clock_expired() {
+        if self.stalemate() || self.half_move_clock_expired() {
             return 0;
         }
         let mut score = 0;
-        // for piece in self.p1_pieces.iter() {
-        //     let piece = self.get(*piece).unwrap();
-        //     score += piece.value();
-        // }
-        // for piece in self.p2_pieces.iter() {
-        //     let piece = self.get(*piece).unwrap();
-        //     score -= piece.value();
-        // }
-        self.p1_pieces.iter().for_each(|&piece| {
+        for &piece in &self.p1_pieces {
             score += self.get(piece).unwrap().value();
-        });
-        self.p2_pieces.iter().for_each(|&piece| {
+        }
+        for &piece in &self.p2_pieces {
             score -= self.get(piece).unwrap().value();
-        });
+        }
         score
     }
 
@@ -1252,8 +1250,7 @@ impl<'a> Game<'a> {
     fn tick(&mut self) -> bool {
         if self.is_last_halfmove() && !self.in_simulation {
             println!("The halfmove clock is nearly up! Next move must be a capture or pawn move.");
-        }
-        if self.half_move_clock_expired() {
+        } else if self.half_move_clock_expired() && !self.in_simulation {
             println!("{HALF_MOVE_LIMIT} moves without a capture or pawn move, it's a draw!");
             return true;
         }
@@ -1579,7 +1576,7 @@ impl<'a> Game<'a> {
     }
 
     pub(crate) fn is_last_halfmove(&self) -> bool {
-        self.half_move_clock >= HALF_MOVE_LIMIT - 1
+        self.half_move_clock == HALF_MOVE_LIMIT - 1
     }
 
     fn half_move_clock_expired(&self) -> bool {
@@ -1662,15 +1659,25 @@ impl<'a> Game<'a> {
         }
         fen.push(' ');
 
-        fen.push((self.half_move_clock + '0' as u8) as char);
+        // fen.push((self.half_move_clock + '0' as u8) as char);
+        fen.push(self.half_move_clock.to_string().chars().next().unwrap());
         fen.push(' ');
         
-        fen.push((self.full_move_clock + '0' as u8) as char);
+        // fen.push((self.full_move_clock + '0' as u8) as char);
+        self.full_move_clock.to_string().chars().for_each(|c| fen.push(c));
         fen
     }
 
     fn update_epsilon(&mut self) {
         self.epsilon *= self.epsilon_decay_rate;
+    }
+
+    pub fn winner(&mut self) -> Option<Player> {
+        self.winner
+    }
+
+    pub fn is_maximizing(&self) -> bool {
+        self.current_player.is_maximizing()
     }
 
     // pub fn from_fen(fen: String) -> Self {

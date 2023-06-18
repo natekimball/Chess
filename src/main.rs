@@ -34,13 +34,14 @@ fn main() {
     } else {
         "model/model_v4_w_sigs"
     };
+    let num_games = if args.contains(&String::from("--num-games")) {args[args.iter().position(|x| x == "--num-games").unwrap() + 1].parse::<usize>().unwrap()} else {1};
+
     if heuristic && self_play {
-        return heuristic_self_play(search_depth);
+        return heuristic_self_play(search_depth, num_games);
     }
     
     let model = if two_player || heuristic { None } else { Some(Model::new(save_dir)) };
     if self_play {
-        let num_games = if args.contains(&String::from("--num-games")) {args[args.iter().position(|x| x == "--num-games").unwrap() + 1].parse::<usize>().unwrap()} else {1};
         reinforcement_learning(num_games, &model, search_depth, epsilon_greedy);
     } else {
         let mut play_again = true;
@@ -84,11 +85,26 @@ fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth:
     }
 }
 
-fn heuristic_self_play(search_depth: Option<u8>) {
-    let mut game = Game::self_play(&None, search_depth, false);
-    let mut game_over = false;
-    while !game_over {
-        game_over = game.turn();
+fn heuristic_self_play(search_depth: Option<u8>, num_games: usize) {
+    let mut white_wins = 0;
+    let mut black_wins = 0;
+    let mut draws = 0;
+    for _ in 0..num_games {
+        let mut game = Game::self_play(&None, search_depth, false);
+        let mut game_over = false;
+        while !game_over {
+            game_over = game.turn();
+        }
+        match game.winner() {
+            Some(Player::One) => white_wins += 1,
+            Some(Player::Two) => black_wins += 1,
+            None => draws += 1
+        }
+    }
+    if num_games >= 1 {
+        println!("White wins: {}", white_wins);
+        println!("Black wins: {}", black_wins);
+        println!("Draws: {}", draws);
     }
 }
 
