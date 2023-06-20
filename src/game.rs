@@ -105,7 +105,7 @@ impl<'a> Game<'a> {
     }
 
     pub fn two_player_game(allow_hints: bool) -> Self {
-        Self::new(true, None, false, &None, Some(7),false, allow_hints, None, None)
+        Self::new(true, None, false, &None, Some(6),false, allow_hints, None, None)
     }
 
     pub fn single_player_game(
@@ -121,6 +121,7 @@ impl<'a> Game<'a> {
     }
 
     fn get_best_move(&mut self) -> Option<((u8, u8), (u8, u8))> {
+        println!("Thinking...");
         self.in_simulation = true;
         let now = std::time::SystemTime::now();
         // let possible_moves = self.get_moves_sorted(true);
@@ -355,9 +356,6 @@ impl<'a> Game<'a> {
         if self.tick() {
             return true;
         }
-        println!(
-            "Enter your move (e.g. a2 a4) or enter a position to see its possible moves (e.g. a2):"
-        );
 
         loop {
             let (from, to) = self.get_move();
@@ -932,6 +930,7 @@ impl<'a> Game<'a> {
     }
 
     fn get_move(&mut self) -> ((u8, u8), (u8, u8)) {
+        println!("Enter a move or \"help\" to see more commands");
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         if input.to_ascii_lowercase().trim() == "exit" {
@@ -943,24 +942,33 @@ impl<'a> Game<'a> {
                 self.current_player.other()
             );
             std::process::exit(0);
-        } else if input.to_ascii_lowercase().trim() == "hint" && self.allow_hints {
-            // TODO: handle, hints are not allowed
-            let best_move = self.get_best_move().unwrap();
-            println!("Hint, your best move is: {} -> {}", format_coord(best_move.0), format_coord(best_move.1));
-            println!("Enter your move (e.g. a2 a4):");
+        } else if input.to_ascii_lowercase().trim() == "hint" {
+            if self.allow_hints {
+                let best_move = self.get_best_move().unwrap();
+                println!("Hint, your best move is: {} -> {}", format_coord(best_move.0), format_coord(best_move.1));
+            } else {
+                println!("Hints are turned off!");
+            }
+        } else if input.to_ascii_lowercase().trim() == "help" {
+            println!("Commands:");
+            println!("  a2\t- display all possible moves for the piece at a4");
+            println!("  a2 a4\t- move the piece at a2 to a4");
+            println!("  hint\t- get a hint for your next move");
+            println!("  resign\t- resign the game");
+            println!("  exit\t- exit the game");
             return self.get_move();
         }
         let mut input = input.split_whitespace();
         let from = input.next();
         let to = input.next();
         if from.is_none() {
-            println!("Invalid input! Try again.");
+            print!("Invalid input!");
             return self.get_move();
         } else if to.is_none() {
             let from = from.unwrap().to_ascii_lowercase();
             let from = (from.chars().nth(0), from.chars().nth(1));
             if from.0.is_none() || from.1.is_none() {
-                println!("Invalid input! Try again.");
+                print!("Invalid input!");
                 return self.get_move();
             }
             let from = (
@@ -968,12 +976,11 @@ impl<'a> Game<'a> {
                 '8' as i8 - from.1.unwrap() as i8,
             );
             if from.0 < 0 || from.0 > 7 || from.1 < 0 || from.1 > 7 {
-                println!("Invalid input! Try again.");
+                print!("Invalid input!");
                 return self.get_move();
             }
             let from = (from.0 as u8, from.1 as u8);
             self.see_all_moves(from);
-            println!("Enter your move (e.g. a2 a4):");
             return self.get_move();
         }
         let from = from.unwrap().to_ascii_lowercase();
@@ -981,7 +988,7 @@ impl<'a> Game<'a> {
         let from = (from.chars().nth(0), from.chars().nth(1));
         let to = (to.chars().nth(0), to.chars().nth(1));
         if from.0.is_none() || from.1.is_none() || to.0.is_none() || to.1.is_none() {
-            println!("Invalid input! Try again.");
+            print!("Invalid input!");
             return self.get_move();
         }
         let from = (
@@ -1001,7 +1008,7 @@ impl<'a> Game<'a> {
             || to.0 > 7
             || to.1 > 7
         {
-            println!("Invalid input! Try again.");
+            print!("Invalid input!");
             return self.get_move();
         }
         let from = (from.0 as u8, from.1 as u8);
