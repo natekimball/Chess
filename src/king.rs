@@ -68,7 +68,6 @@ impl Piece for King {
 }
 
 impl King {
-    // TODO: can't move through check to castle
     pub(crate) fn can_castle_left(&self, position: (u8,u8), game: &mut Game) -> bool {
         let y = match self.player {
             Player::One => 7,
@@ -157,7 +156,7 @@ mod tests {
         board[7][4] = Some(Box::new(King::new(Player::One)));
         board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::two_player_game();
+        let mut game = Game::two_player_game(false);
         game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
 
@@ -187,7 +186,7 @@ mod tests {
         board[7][4] = Some(Box::new(King::new(Player::One)));
         board[7][6] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::two_player_game();
+        let mut game = Game::two_player_game(false);
         game.set_pieces(vec![(2,7),(4,7),(6,7)], vec![(0,0),(4,0),(7,0)]);
         game.set_board(board);
 
@@ -212,7 +211,7 @@ mod tests {
         board[7][4] = Some(Box::new(King::new(Player::One)));
         board[7][7] = Some(Box::new(Rook::new(Player::One)));
 
-        let mut game = Game::two_player_game();
+        let mut game = Game::two_player_game(false);
         game.set_pieces(vec![(0,7),(4,7),(7,7)], vec![(3,5)]);
         game.set_board(board);
 
@@ -235,7 +234,7 @@ mod tests {
         board[0][5] = Some(Box::new(Pawn::new(Player::Two)));
         board[3][1] = Some(Box::new(Bishop::new(Player::One)));
 
-        let mut game = Game::two_player_game();
+        let mut game = Game::two_player_game(false);
         game.set_pieces(vec![(1,3)], vec![(4,0),(5,1),(5,0),(4,1)]);
         game.set_board(board);
         game.set_player(Player::Two);

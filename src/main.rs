@@ -1,4 +1,4 @@
-// extern crate tensorflow;
+extern crate tensorflow;
 mod game;
 mod piece;
 mod king;
@@ -9,108 +9,146 @@ mod knight;
 mod pawn;
 mod player;
 mod model;
+mod args;
 
 
 // use std::process::Command;
-use std::env::args;
+use args::ChessArgs;
+use clap::Parser;
 use game::Game;
 use model::Model;
 use player::Player;
+use game::DEFAULT_EPSILON_DECAY;
 
 fn main() {
-    let args: Vec<String> = args().collect();
-    let two_player = args.contains(&"--2p".to_string());
-    let computer_player = if args.contains(&String::from("--black")) {Some(Player::One)} else {Some(Player::Two)};
-    let self_play = args.contains(&String::from("--self-play"));
-    let heuristic = args.contains(&String::from("--heuristic")) || args.contains(&String::from("-h"));
-    let epsilon_greedy = args.contains(&String::from("--epsilon-greedy"));
-    let search_depth = if args.contains(&String::from("--depth")) {
-        Some(args[args.iter().position(|x| x == "--depth").unwrap() + 1].parse::<u8>().unwrap())
-    } else {
-        None
-    };
-    let save_dir = if args.contains(&String::from("--save-dir")) {
-        args[args.iter().position(|x| x == "--save-dir").unwrap() + 1].as_str()
-    } else {
-        "model/model_v4_w_sigs"
-    };
-    let num_games = if args.contains(&String::from("--num-games")) {args[args.iter().position(|x| x == "--num-games").unwrap() + 1].parse::<usize>().unwrap()} else {1};
-
-    if heuristic && self_play {
-        return heuristic_self_play(search_depth, num_games);
-    }
+    let args = ChessArgs::parse();
     
-    let model = if two_player || heuristic { None } else { Some(Model::new(save_dir)) };
-    if self_play {
-        reinforcement_learning(num_games, &model, search_depth, epsilon_greedy);
-    } else {
-        let mut play_again = true;
-        while play_again {
-            play_again = launch_game(two_player, computer_player, &model, search_depth);
+    match args.game_type {
+        args::GameType::TwoPlayer(args) => {
+            two_player_game(args.allow_hints);
+        },
+        args::GameType::SinglePlayer(args) => {
+            single_player_game(args.black, args.heuristic, args.search_depth, args.model_dir);
+        },
+        args::GameType::SelfPlay(args) => {
+            self_play_games(args.heuristic, args.search_depth, args.num_games, args.model_dir, args.epsilon_greedy, args.epsilon_decay);
         }
     }
 }
 
-fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option<Model>, search_depth: Option<u8>) -> bool {
-    let mut game = if two_player {
-        Game::two_player_game()
-    } else {
-        Game::single_player_game(computer_player, model, search_depth)
-    };
-
-    let mut game_over = false;
-    while !game_over {
-        // print!("\x1b[120S\x1b[1;1H");
-        // print!("\x1B[2J\x1B[1;1H");
-        // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
-        game_over = game.turn();
-    }    
-    play_again()
-}
-
-fn reinforcement_learning(num_games: usize, model: &Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool) {
-    let mut game = Game::self_play(model, search_depth, epsilon_greedy);
-
-    for i in 0..num_games {
-        println!("Playing game {}/{}", i+1, num_games);
-        let now = std::time::Instant::now();
-        let mut game_over = false;
-        while !game_over {
-            game_over = game.turn();
-        }
-        let elapsed = now.elapsed();
-        println!("Time to play game {i}: {:?}", elapsed);
-        println!("Saving model...");
-        game.save_model();
+fn two_player_game(allow_hints: bool) {
+    let mut game = Game::two_player_game(allow_hints);
+    let mut play_again = true;
+    while play_again {
+        launch_game(&mut game);
+        play_again = user_play_again();
     }
 }
 
-fn heuristic_self_play(search_depth: Option<u8>, num_games: usize) {
+fn single_player_game(black: bool, heuristic: bool, search_depth: Option<u8>, model_dir: Option<String>) {
+    let computer_player = if black {Some(Player::One)} else {Some(Player::Two)};
+    let model = if heuristic { None } else { Some(Model::new(model_dir)) };
+    let mut game = Game::single_player_game(computer_player, &model, search_depth);
+    games_loop(&mut game);
+}
+
+fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, model_dir: Option<String>, epsilon_greedy: bool, epsilon_decay: Option<f64>) {
+    let model = if heuristic { None } else { Some(Model::new(model_dir)) };
     let mut white_wins = 0;
     let mut black_wins = 0;
     let mut draws = 0;
-    for _ in 0..num_games {
-        let mut game = Game::self_play(&None, search_depth, false);
-        let mut game_over = false;
-        while !game_over {
-            game_over = game.turn();
+    let (mut epsilon, epsilon_decay) = if epsilon_greedy {
+        (Some(1.0), Some(epsilon_decay.unwrap_or(DEFAULT_EPSILON_DECAY)))
+    } else {
+        (None, None)
+    };
+    for i in 1..num_games+1 {
+        if num_games > 1 {
+            println!("Playing game {}/{}", i, num_games);
+        }
+        let mut game = Game::self_play(&model, search_depth, epsilon_greedy, epsilon, epsilon_decay);
+        let now = std::time::Instant::now();
+        launch_game(&mut game);
+        let elapsed = now.elapsed();
+        println!("Time to play game {}: {:?}", i, elapsed);
+        if let Some(ep) = epsilon {
+            epsilon = Some(ep*epsilon_decay.unwrap());
+            println!("Epsilon: {}", ep);
         }
         match game.winner() {
             Some(Player::One) => white_wins += 1,
             Some(Player::Two) => black_wins += 1,
             None => draws += 1
         }
+        if !heuristic {
+            game.save_model();
+        }
     }
-    if num_games >= 1 {
+    if num_games > 1 {
         println!("White wins: {}", white_wins);
         println!("Black wins: {}", black_wins);
         println!("Draws: {}", draws);
     }
 }
 
-fn play_again() -> bool {
+fn games_loop(game: &mut Game) {
+    let mut play_again = true;
+    while play_again {
+        launch_game(game);
+        play_again = user_play_again();
+    }
+}
+
+fn launch_game(game: &mut Game) {
+    let mut game_over = false;
+    while !game_over {
+        // print!("\x1b[120S\x1b[1;1H");
+        // print!("\x1B[2J\x1B[1;1H");
+        // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
+        game_over = game.turn();
+    }
+}
+
+fn user_play_again() -> bool {
     println!("Play again? (y/n)");
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
     input.trim().to_ascii_lowercase() == "y"
 }
+
+// fn main() {
+//     let args = ChessArgs::parse();
+
+//     let computer_player = if args.two_player {None} else {if args.black {Some(Player::One)} else {Some(Player::Two)}};
+//     if args.heuristic && args.self_play {
+//         return heuristic_self_play(args.search_depth, args.num_games);
+//     }
+    
+//     let save_dir = args.save_dir;
+//     let model = if args.two_player || args.heuristic { None } else { Some(Model::new(model_dir.as_str())) };
+//     if args.self_play {
+//         reinforcement_learning(args.num_games, &model, args.search_depth, args.epsilon_greedy, args.epsilon_decay);
+//     } else {
+//         let mut play_again = true;
+//         while play_again {
+//             play_again = launch_game(args.two_player, computer_player, &model, args.search_depth, args.allow_hints);
+//         }
+//     }
+// }
+
+// fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option<Model>, search_depth: Option<u8>, allow_hints: bool) -> bool {
+//     let mut game = if two_player {
+//         Game::two_player_game(allow_hints)
+//     } else {
+//         Game::single_player_game(computer_player, model, search_depth)
+//     };
+
+//     let mut game_over = false;
+//     while !game_over {
+//         // print!("\x1b[120S\x1b[1;1H");
+//         // print!("\x1B[2J\x1B[1;1H");
+//         // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
+//         game_over = game.turn();
+//     }    
+//     play_again()
+// }

@@ -1,7 +1,5 @@
-use std::{sync::Arc, path::Path, error::Error, time::Duration};
-use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Session, Tensor, Operation, SavedModelBuilder, SavedModelSaver, Scope, ImportGraphDefOptions, MetaGraphDef, SignatureDef, REGRESS_INPUTS, REGRESS_METHOD_NAME, REGRESS_OUTPUTS, Output, Status, Variable, ops, DataType};
-
-// const REGRESS_METHOD_NAME: &str = "serve";
+use std::{sync::Arc, error::Error, time::Duration};
+use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Session, Tensor, Operation};
 
 #[derive(Clone)]
 pub struct Model {
@@ -15,13 +13,13 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(save_dir: &str) -> Self {
+    pub fn new(model_dir: Option<String>) -> Self {
         let input_parameter_name = "input";
         let output_parameter_name = "output_0";
         let train_input_target_name = "training_target";
         let mut graph = Graph::new();
         let bundle = SavedModelBundle::load(
-            &SessionOptions::new(), &["serve"], &mut graph, save_dir
+            &SessionOptions::new(), &["serve"], &mut graph, model_dir.unwrap_or("model/model_v4_w_sigs".to_string()).as_str()
         ).expect("Can't load saved model");
         // println!("sigs: {:?}", bundle.meta_graph_def().signatures());
         
@@ -143,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_load_and_save_model() {
-        let model = Model::new( "model/saved_model_t");
+        let model = Model::new( Some("model/saved_model_t".to_string()));
         model.save_model();
     }
 }

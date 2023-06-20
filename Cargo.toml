@@ -3,40 +3,13 @@ name = "chess"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-# [lib]
-# crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 colored = "2.0.0"
-tensorflow = { version = "0.20.0" } # features = ["ndarray"]
+tensorflow = { version = "0.20.0" }
 rand = "0.8.5"
-# tract-tensorflow = "0.19.7"
-# onnxruntime = "0.0.14"
-ndarray = "0.15.1"
-ndarray-rand = "0.14.0"
 clap = { version = "4.2.1", features = ["derive"] }
 rayon = "1.7.0"
-ordered-float = "3.6.0"
 # tch = "0.11.0"
-# js-sys = { version = "0.3.50", optional = true }
-# webpack = "0.1.0"
-# wasm-bindgen = "0.2.83"
-# stdweb = "0.4.20"
 
-# [features]
-# default = ["js-sys"]
-
-# [dependencies.web-sys]
-# version = "0.3.60"
-# features = [
-#     'Document',
-#     'Element',
-#     'HtmlElement',
-#     'Node',
-#     'Window',
-#     'console',
-#     'Event',
-#     'EventTarget',
-#     'DragEvent'
-# ]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
