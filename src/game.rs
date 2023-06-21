@@ -949,26 +949,27 @@ impl<'a> Game<'a> {
             } else {
                 println!("Hints are turned off!");
             }
+            return self.get_move();
         } else if input.to_ascii_lowercase().trim() == "help" {
             println!("Commands:");
-            println!("  a2\t- display all possible moves for the piece at a4");
-            println!("  a2 a4\t- move the piece at a2 to a4");
-            println!("  hint\t- get a hint for your next move");
-            println!("  resign\t- resign the game");
-            println!("  exit\t- exit the game");
+            println!("  a2      - display all possible moves for the piece at a4");
+            println!("  a2 a4   - move the piece at a2 to a4");
+            println!("  hint    - get a hint for your next move");
+            println!("  resign  - resign the game");
+            println!("  exit    - exit the game");
             return self.get_move();
         }
         let mut input = input.split_whitespace();
         let from = input.next();
         let to = input.next();
         if from.is_none() {
-            print!("Invalid input!");
+            print!("Invalid input! ");
             return self.get_move();
         } else if to.is_none() {
             let from = from.unwrap().to_ascii_lowercase();
             let from = (from.chars().nth(0), from.chars().nth(1));
             if from.0.is_none() || from.1.is_none() {
-                print!("Invalid input!");
+                print!("Invalid input! ");
                 return self.get_move();
             }
             let from = (
@@ -976,7 +977,7 @@ impl<'a> Game<'a> {
                 '8' as i8 - from.1.unwrap() as i8,
             );
             if from.0 < 0 || from.0 > 7 || from.1 < 0 || from.1 > 7 {
-                print!("Invalid input!");
+                print!("Invalid input! ");
                 return self.get_move();
             }
             let from = (from.0 as u8, from.1 as u8);
@@ -988,7 +989,7 @@ impl<'a> Game<'a> {
         let from = (from.chars().nth(0), from.chars().nth(1));
         let to = (to.chars().nth(0), to.chars().nth(1));
         if from.0.is_none() || from.1.is_none() || to.0.is_none() || to.1.is_none() {
-            print!("Invalid input!");
+            print!("Invalid input! ");
             return self.get_move();
         }
         let from = (
@@ -1008,7 +1009,7 @@ impl<'a> Game<'a> {
             || to.0 > 7
             || to.1 > 7
         {
-            print!("Invalid input!");
+            print!("Invalid input! ");
             return self.get_move();
         }
         let from = (from.0 as u8, from.1 as u8);
