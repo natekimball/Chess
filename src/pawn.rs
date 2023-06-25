@@ -22,8 +22,10 @@ impl Piece for Pawn {
             return moves;
         }
         let new_pos = (position.0, new_y as u8);
-        if game.square_is_none(new_pos) && !game.try_move_for_check(position, new_pos, self.player) {
-            moves.push(new_pos);
+        if game.square_is_none(new_pos) {
+            if !game.try_move_for_check(position, new_pos, self.player) {
+                moves.push(new_pos);
+            }
             if position.1 == (end - 5*sign) as u8 {
                 let new_pos = (new_pos.0, (new_y + sign) as u8);
                 if game.square_is_none(new_pos) && !game.try_move_for_check(position, new_pos, self.player){
@@ -36,7 +38,7 @@ impl Piece for Pawn {
                 continue;
             }
             let new_pos = (x as u8, y as u8);
-            if game.is_player(new_pos, self.player.other()) && !game.try_move_for_check(position, new_pos, self.player){
+            if game.is_player(new_pos, self.player.other()) && !game.try_move_for_check(position, new_pos, self.player) {
                 moves.push(new_pos);
             } else if y == end - sign {
                 if let Some(last_double) = game.get_last_double() {

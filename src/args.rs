@@ -48,8 +48,6 @@ pub struct OnePlayerArgs {
 
 #[derive(Args, Debug)]
 pub struct SelfPlayArgs {
-    
-    // TODO: depricated
     /// use heuristic evaluation function in minimax
     #[arg(short = 'p', long, default_value_t = false)]
     pub heuristic: bool,

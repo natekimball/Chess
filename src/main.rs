@@ -12,6 +12,8 @@ mod model;
 mod args;
 
 
+use std::{collections::HashMap, sync::{Mutex, Arc}};
+
 // use std::process::Command;
 use args::ChessArgs;
 use clap::Parser;
@@ -62,11 +64,13 @@ fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, mo
     } else {
         (None, None)
     };
+    let cache = Arc::new(Mutex::new(HashMap::new()));
+    let start = std::time::Instant::now();
     for i in 1..num_games+1 {
         if num_games > 1 {
             println!("Playing game {}/{}", i, num_games);
         }
-        let mut game = Game::self_play(&model, search_depth, epsilon_greedy, epsilon, epsilon_decay);
+        let mut game = Game::self_play(&model, search_depth, epsilon_greedy, epsilon, epsilon_decay, Some(cache.clone()));
         let now = std::time::Instant::now();
         launch_game(&mut game);
         let elapsed = now.elapsed();
@@ -85,6 +89,8 @@ fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, mo
         }
     }
     if num_games > 1 {
+        let elapsed = start.elapsed();
+        println!("Total time for {} games: {:?}", num_games, elapsed);
         println!("White wins: {}", white_wins);
         println!("Black wins: {}", black_wins);
         println!("Draws: {}", draws);
