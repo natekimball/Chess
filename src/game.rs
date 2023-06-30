@@ -48,7 +48,7 @@ pub struct Game<'a> {
     full_move_clock: u32,
     in_simulation: bool,
     two_player: bool,
-    model: &'a Option<Model>,
+    model: Option<&'a Model>,
     computer_player: Option<Player>,
     cache: Cache,
     rl_training: bool,
@@ -66,7 +66,7 @@ impl<'a> Game<'a> {
         two_player: bool,
         computer_player: Option<Player>,
         rl_training: bool,
-        model: &'a Option<Model>,
+        model: Option<&'a Model>,
         search_depth: Option<u8>,
         epsilon_greedy: bool,
         allow_hints: bool,
@@ -108,18 +108,18 @@ impl<'a> Game<'a> {
     }
 
     pub fn two_player_game(allow_hints: bool) -> Self {
-        Self::new(true, None, false, &None, Some(6),false, allow_hints, None, None, None)
+        Self::new(true, None, false, None, Some(6),false, allow_hints, None, None, None)
     }
 
     pub fn single_player_game(
         player: Option<Player>,
-        model: &'a Option<Model>,
+        model: Option<&'a Model>,
         search_depth: Option<u8>,
     ) -> Self {
         Self::new(false, player, false, model, search_depth, false, true, None, None, None)
     }
 
-    pub fn self_play(model: &'a Option<Model>, search_depth: Option<u8>, epsilon_greedy: bool, initial_epsilon: Option<f64>, epsilon_decay: Option<f64>, cache: Option<Cache>) -> Self {
+    pub fn self_play(model: Option<&'a Model>, search_depth: Option<u8>, epsilon_greedy: bool, initial_epsilon: Option<f64>, epsilon_decay: Option<f64>, cache: Option<Cache>) -> Self {
         Self::new(false, None, true, model, search_depth, epsilon_greedy, false, initial_epsilon, epsilon_decay, cache)
     }
 
@@ -133,56 +133,39 @@ impl<'a> Game<'a> {
             return None;
         }
 
-        let move_evals = possible_moves.par_iter().map(|&mov| {
+        let move_evals: Vec<(((u8, u8), (u8, u8)), f32)> = possible_moves.par_iter().map(|&mov| {
             let mut game = self.clone();
             game.move_piece(mov.0, mov.1);
             let score = game.minimax_search(self.search_depth - 1, game.current_player.is_maximizing(), f32::MIN, f32::MAX);
             (mov, score)
-        });
+        }).collect();
 
-        // move_evals.clone().for_each(|(mov, score)| {
+        // move_evals.iter().for_each(|(mov, score)| {
         //     print!("{} -> {} : {}\n", format_coord(mov.0), format_coord(mov.1), score);
         // });
 
         let best_score = if self.is_maximizing() {
-            move_evals.clone()
-                .map(|(_, score)| score)
-                .max_by(|score1, score2| score1.partial_cmp(score2).unwrap())
-                .unwrap()
+            move_evals.iter()
+                .max_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
+                .unwrap().1
         } else {
-            move_evals.clone()
-                .map(|(_, score)| score)
-                .min_by(|score1, score2| score1.partial_cmp(score2).unwrap())
-                .unwrap()
+            move_evals.iter()
+                .min_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
+                .unwrap().1
         };
-        let best_moves = move_evals
+        let best_moves = move_evals.par_iter()
             .filter(|(_, score)| *score == best_score)
             .map(|(mov, _)| mov)
-            .collect::<Vec<((u8, u8), (u8, u8))>>();
-        let best_move = best_moves.choose(&mut rand::thread_rng()).unwrap().clone();
-        // let best_score = if self.is_maximizing() {
-        //     move_evals.par_iter()
-        //         .map(|(_, score)| score)
-        //         .max_by(|score1, score2| score1.partial_cmp(score2).unwrap())
-        //         .unwrap()
-        // } else {
-        //     move_evals.par_iter()
-        //         .map(|(_, score)| score)
-        //         .min_by(|score1, score2| score1.partial_cmp(score2).unwrap())
-        //         .unwrap()
-        // };
-        // let best_moves = move_evals.clone().par_iter()
-        //     .filter(|(_, score)| *score == *best_score)
-        //     .map(|&(mov, _)| mov)
-        //     .collect::<Vec<((u8, u8), (u8, u8))>>();
-        // let best_move = best_moves.choose(&mut rand::thread_rng()).unwrap().clone();
+            .collect::<Vec<&((u8, u8), (u8, u8))>>();
+        let best_move = best_moves.choose(&mut rand::thread_rng()).unwrap();
+
         let elapsed = now.elapsed().unwrap();
         println!(
             "Time to evaluate best move to depth of {}: {:?}",
             self.search_depth, elapsed
         );
         self.in_simulation = false;
-        Some(best_move)
+        Some(**best_move)
     }
 
     fn get_best_move_and_back_propagate(&mut self) -> ((u8, u8), (u8, u8)) {
@@ -245,7 +228,7 @@ impl<'a> Game<'a> {
     }
 
     fn minimax_search(&mut self, depth: u8, maximizing: bool, mut alpha: f32, mut beta: f32) -> f32 {
-        // the algorithm assumes a good evaluation model to approximate game state evaluations
+        // the algorithm assumes a good heuristic or evaluation model to approximate game state evaluations
         if self.draw() {
             return 0.0;
         }
@@ -255,15 +238,9 @@ impl<'a> Game<'a> {
                 return score;
             }
         }
-        // if let Some(&(score, stored_depth)) = cache.get(&fen) {
-        //     if stored_depth < depth {
-        //         return score;
-        //     }
-        // }
-
-        // if depth <= 1 and self.model.is_some() {
-        //     return self.last_level_minimax(maximizing, alpha, beta);
-        // }
+        if depth <= 1 && self.model.is_some() {
+            return self.last_level_minimax(maximizing, alpha, beta);
+        }
         if depth == 0 {
             return self.evaluate()
         }
@@ -293,16 +270,8 @@ impl<'a> Game<'a> {
             }
         }
         self.cache.lock().unwrap().insert(fen, (best_score, depth));
-        // cache.insert(fen, (best_score, depth));
         best_score
     }
-
-    // fn cache(&mut self, fen: String, score: f32, current_depth: u8) {
-    //     if self.cache.get(&fen).is_some_and(|(score, depth)| depth > current_depth) {
-    //         self.cache.insert(fen, score);
-    //     }
-    //     // unneccesary if statement, because that should be checked before the search is performed
-    // }
 
     fn last_level_minimax(&mut self, maximizing: bool, alpha: f32, beta: f32) -> f32 {
         let moves = self.get_possible_moves(self.current_player);
@@ -332,7 +301,6 @@ impl<'a> Game<'a> {
     }
 
     pub fn turn(&mut self) -> bool {
-        // self.assert_pieces();
         println!("{}", self);
         println!("It's {}'s turn.", self.current_player);
 
@@ -367,7 +335,7 @@ impl<'a> Game<'a> {
             let (from, to) = self.get_move();
             let mut half_move = false;
             if !self.is_current_player(from) {
-                println!("You must move one of your own pieces!\nInvalid move! go again.");
+                println!("You must move one of your own pieces! go again.");
                 continue;
             }
             let piece = self.get(from);
@@ -446,27 +414,27 @@ impl<'a> Game<'a> {
         return false;
     }
 
-    // TODO: remove
-    // fn assert_pieces(&mut self) {
-    //     for position in self.p1_pieces.clone() {
-    //         let piece = self.get(position).expect("assertion failed: piece position is empty");
-    //         assert_eq!(piece.player(), Player::One);
-    //         for target in piece.get_legal_moves(position, self) {
-    //             assert!(piece.valid_move(position, target, self).is_valid());
-    //         }
-    //     }
-    //     for position in self.p2_pieces.clone() {
-    //         let piece = self.get(position).expect("assertion failed: piece position is empty");
-    //         assert_eq!(piece.player(), Player::Two);
-    //         for target in piece.get_legal_moves(position, self) {
-    //             assert!(piece.valid_move(position, target, self).is_valid());
-    //         }
-    //     }
-    //     assert!(self.get(self.king_one).unwrap().is_type::<King>());
-    //     assert!(self.get(self.king_two).unwrap().is_type::<King>());
-    //     assert!(self.p2_taken.iter().sum::<u8>() + self.p1_pieces.len() as u8 == 16);
-    //     assert!(self.p1_taken.iter().sum::<u8>() + self.p2_pieces.len() as u8 == 16);
-    // }
+    #[cfg(test)]
+    fn assert_pieces(&mut self) {
+        for position in self.p1_pieces.clone() {
+            let piece = self.get(position).expect("assertion failed: piece position is empty");
+            assert_eq!(piece.player(), Player::One);
+            for target in piece.get_legal_moves(position, self) {
+                assert!(piece.valid_move(position, target, self).is_valid());
+            }
+        }
+        for position in self.p2_pieces.clone() {
+            let piece = self.get(position).expect("assertion failed: piece position is empty");
+            assert_eq!(piece.player(), Player::Two);
+            for target in piece.get_legal_moves(position, self) {
+                assert!(piece.valid_move(position, target, self).is_valid());
+            }
+        }
+        assert!(self.get(self.king_one).unwrap().is_type::<King>());
+        assert!(self.get(self.king_two).unwrap().is_type::<King>());
+        assert!(self.p2_taken.iter().sum::<u8>() + self.p1_pieces.len() as u8 == 16);
+        assert!(self.p1_taken.iter().sum::<u8>() + self.p2_pieces.len() as u8 == 16);
+    }
 
     fn move_piece(&mut self, from: (u8, u8), to: (u8, u8)) -> bool {
         if self.tick() {
@@ -640,8 +608,8 @@ impl<'a> Game<'a> {
             "Player {} moved {}, {} -> {} ",
             self.current_player.number(),
             self.get(from).unwrap().name(),
-            format_coord(from),
-            format_coord(to)
+            format_coord(&from),
+            format_coord(&to)
         );
         if self.move_piece(from, to) {
             println!("{self}");
@@ -677,8 +645,8 @@ impl<'a> Game<'a> {
         println!(
             "Player {} moved {} -> {} ",
             self.current_player.number(),
-            format_coord(from),
-            format_coord(to)
+            format_coord(&from),
+            format_coord(&to)
         );
         self.in_simulation = false;
         if self.move_piece(from, to) {
@@ -912,6 +880,7 @@ impl<'a> Game<'a> {
     }
 
     pub(crate) fn get(&self, (x, y): (u8, u8)) -> Square {
+        // should I pass the position as reference?
         self.board[y as usize][x as usize].clone()
     }
 
@@ -957,15 +926,25 @@ impl<'a> Game<'a> {
         } else if input.to_ascii_lowercase().trim() == "hint" {
             if self.allow_hints {
                 let best_move = self.get_best_move().unwrap();
-                println!("Hint, your best move is: {} -> {}", format_coord(best_move.0), format_coord(best_move.1));
+                println!("Hint, your best move is: {} -> {}", format_coord(&best_move.0), format_coord(&best_move.1));
             } else {
                 println!("Hints are turned off!");
+            }
+            return self.get_move();
+        } else if input.to_ascii_lowercase().trim() == "moves" {
+            for position in self.get_pieces(self.current_player).clone() {
+                let piece = self.get(position).expect("Piece not found! something went wrong");
+                let piece_moves = piece.get_legal_moves(position, self);
+                if !piece_moves.is_empty() {
+                    println!("{} {} -> {}", piece.name(), format_coord(&position), piece_moves.iter().map(format_coord).collect::<Vec<String>>().join(", "));
+                }
             }
             return self.get_move();
         } else if input.to_ascii_lowercase().trim() == "help" {
             println!("Commands:");
             println!("  a2      - display all possible moves for the piece at a4");
             println!("  a2 a4   - move the piece at a2 to a4");
+            println!("  moves   - see all possible moves");
             println!("  hint    - get a hint for your next move");
             println!("  resign  - resign the game");
             println!("  exit    - exit the game");
@@ -1609,11 +1588,13 @@ impl<'a> Game<'a> {
         fen.push(' ');
 
         // fen.push((self.half_move_clock + '0' as u8) as char);
-        fen.push(self.half_move_clock.to_string().chars().next().unwrap());
+        // fen.push(self.half_move_clock.to_string().chars().next().unwrap());
+        fen.extend(self.half_move_clock.to_string().chars());
         fen.push(' ');
         
         // fen.push((self.full_move_clock + '0' as u8) as char);
-        self.full_move_clock.to_string().chars().for_each(|c| fen.push(c));
+        // self.full_move_clock.to_string().chars().for_each(|c| fen.push(c));
+        fen.extend(self.full_move_clock.to_string().chars());
         fen
     }
 
@@ -1685,7 +1666,7 @@ impl<'a> Game<'a> {
         fen.push(' ');
 
         if let Some(last_double) = self.last_double {
-            for c in format_coord(last_double).bytes() {
+            for c in format_coord(&last_double).bytes() {
                 fen.push(c as char);
             }
         } else {
@@ -1768,7 +1749,7 @@ impl<'a> Display for Game<'a> {
     }
 }
 
-fn format_coord(coordinate: (u8, u8)) -> String {
+fn format_coord(coordinate: &(u8, u8)) -> String {
     format!(
         "{}{}",
         (coordinate.0 + 'a' as u8) as char,
@@ -1967,7 +1948,7 @@ mod tests {
         board[3][0] = Some(Box::new(Rook::new(Player::Two)));
         board[5][2] = Some(Box::new(Rook::new(Player::Two)));
 
-        let mut game = Game::self_play(&None, Some(4), false, None, None, None);
+        let mut game = Game::self_play(None, Some(4), false, None, None, None);
         game.set_pieces(vec![(6,3), (2, 3), (7,5)], vec![(6,0),(7,4),(5,1),(0,4), (3,3), (0,3), (2,5)]);
         game.set_last_double(Some((3,3)));
         game.set_board(board);
@@ -1982,5 +1963,15 @@ mod tests {
         println!("{:?}", moves);
 
         assert!(!moves.contains(&(3,2)));
+    }
+
+    #[test]
+    fn pieces_add_up() {
+        let mut game = Game::self_play(None, Some(2), false, None, None, None);
+        let mut game_over = false;
+        while !game_over {
+            game_over = game.turn();
+            game.assert_pieces();
+        }
     }
 }

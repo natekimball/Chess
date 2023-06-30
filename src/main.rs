@@ -50,7 +50,7 @@ fn two_player_game(allow_hints: bool) {
 fn single_player_game(black: bool, heuristic: bool, search_depth: Option<u8>, model_dir: Option<String>) {
     let computer_player = if black {Some(Player::One)} else {Some(Player::Two)};
     let model = if heuristic { None } else { Some(Model::new(model_dir)) };
-    let mut game = Game::single_player_game(computer_player, &model, search_depth);
+    let mut game = Game::single_player_game(computer_player, model.as_ref(), search_depth);
     games_loop(&mut game);
 }
 
@@ -70,7 +70,7 @@ fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, mo
         if num_games > 1 {
             println!("Playing game {}/{}", i, num_games);
         }
-        let mut game = Game::self_play(&model, search_depth, epsilon_greedy, epsilon, epsilon_decay, Some(cache.clone()));
+        let mut game = Game::self_play(model.as_ref(), search_depth, epsilon_greedy, epsilon, epsilon_decay, Some(cache.clone()));
         let now = std::time::Instant::now();
         launch_game(&mut game);
         let elapsed = now.elapsed();
