@@ -94,6 +94,24 @@ impl Piece for Pawn {
     }
 }
 
+impl Pawn {
+    pub fn en_passent_capture(&self, from: (u8, u8), to: (u8, u8), game: &mut Game) -> Option<(u8, u8)> {
+        let (x, y) = (to.0 as i8 - from.0 as i8, to.1 as i8 - from.1 as i8);
+        let (sign, end) = match self.player {
+            Player::One => (-1, 2),
+            Player::Two => (1, 5)
+        };
+        if (x.abs() == 1) && (y == sign*1) && !game.square_is_opponent(to, self.player) {
+            if let Some(last_move) = game.get_last_double() {
+                if to.0==last_move.0 && to.1==(end as i8) as u8 && game.square_is_opponent((to.0,(end as i8 - sign) as u8), self.player) {
+                    return Some((to.0,(end as i8 - sign) as u8));
+                }
+            }
+        }
+        None
+    }
+}
+
 impl Construct for Pawn {
     fn new(player: Player) -> Self {
         Pawn {player}

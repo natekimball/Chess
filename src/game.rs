@@ -1164,7 +1164,11 @@ impl<'a> Game<'a> {
     ) -> bool {
         let friendly = self.get(from);
         let friendly_piece = friendly.clone().unwrap();
-        let move_type = friendly_piece.valid_move(from, to, self);
+        let en_passent_capture = if let Some(pawn) = friendly_piece.get_piece::<Pawn>() {
+            pawn.en_passent_capture(from, to, self)
+        } else {
+            None
+        };
         let is_king = friendly_piece.is_type::<King>();
         let old = self.get(to);
         let enemy_pieces = self.get_pieces(player.other()).clone();
@@ -1172,7 +1176,7 @@ impl<'a> Game<'a> {
         if old.is_some() {
             self.remove_piece(to);
         }
-        if let Move::EnPassant(captured) = move_type {
+        if let Some(captured) = en_passent_capture {
             self.remove_piece(captured);
             self.set(captured, None);
         }
@@ -1187,7 +1191,7 @@ impl<'a> Game<'a> {
         if is_king {
             self.set_king(player, from);
         }
-        if let Move::EnPassant(captured) = move_type {
+        if let Some(captured) = en_passent_capture {
             self.set(captured, Some(Box::new(Pawn::new(player.other()))));
         }
         self.set_player_pieces(player.other(), enemy_pieces);
@@ -1259,29 +1263,17 @@ impl<'a> Game<'a> {
 
     fn evaluate_moves(&mut self, moves: &Vec<((u8, u8), (u8, u8))>) -> Vec<f32> {
         // TODO: optimize by not cloning the entire game?
-        if self.model.is_none() {
-            moves
-                .iter()
-                .map(|&(from, to)| {
-                    let mut game = self.clone();
-                    game.move_piece(from, to);
-                    game.get_piece_scores() as f32
-                    // self.piece_score_from_move(m) as f32
-                })
-                .collect()
-        } else {
-        // } else if self.rl_training {
-            self.model
-                .clone()
-                .unwrap()
-                .run_inference(&moves.iter().map(|&(from, to)| {
-                    let mut game = self.clone();
-                    game.move_piece(from, to);
-                    game.to_matrix()
-                }).collect())
-                .unwrap()
-        }
-        // } else {
+        // } if self.rl_training {
+        self.model
+            .clone()
+            .unwrap()
+            .run_inference(&moves.iter().map(|&(from, to)| {
+                let mut game = self.clone();
+                game.move_piece(from, to);
+                game.to_matrix()
+            }).collect())
+            .unwrap()
+        // } else if let Some(model) = self.model {
         //     // check if par_iter is actually faster
         //     let games = moves
         //         .iter()
@@ -1332,8 +1324,6 @@ impl<'a> Game<'a> {
 
         //     let evals = self
         //         .model
-        //         .as_ref()
-        //         .unwrap()
         //         .run_inference(&uncached_games)
         //         .unwrap();
 
