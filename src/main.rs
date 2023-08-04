@@ -13,8 +13,6 @@ mod args;
 
 
 use std::{collections::HashMap, sync::{Mutex, Arc}};
-
-// use std::process::Command;
 use args::ChessArgs;
 use clap::Parser;
 use game::Game;
@@ -66,6 +64,7 @@ fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, mo
     };
     let cache = Arc::new(Mutex::new(HashMap::new()));
     let start = std::time::Instant::now();
+    let mut times = Vec::with_capacity(num_games as usize);
     for i in 1..num_games+1 {
         if num_games > 1 {
             println!("Playing game {}/{}", i, num_games);
@@ -74,11 +73,13 @@ fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, mo
         let now = std::time::Instant::now();
         launch_game(&mut game);
         let elapsed = now.elapsed();
+        times.push(elapsed);
         println!("Time to play game {}: {:?}", i, elapsed);
-        if let Some(ep) = epsilon {
-            epsilon = Some(ep*epsilon_decay.unwrap());
-            println!("Epsilon: {}", ep);
-        }
+        // if let Some(decay) = epsilon_decay {
+        //     epsilon = epsilon.map(|e| e*decay);
+        //     println!("Epsilon: {}", epsilon.unwrap());
+        // }
+        epsilon = epsilon.map(|e| e*epsilon_decay.unwrap());
         match game.winner() {
             Some(Player::One) => white_wins += 1,
             Some(Player::Two) => black_wins += 1,
@@ -94,6 +95,7 @@ fn self_play_games(heuristic: bool, search_depth: Option<u8>, num_games: u16, mo
         println!("White wins: {}", white_wins);
         println!("Black wins: {}", black_wins);
         println!("Draws: {}", draws);
+        println!("Times: {}", times.iter().map(|t| format!("{}s", t.as_secs())).collect::<Vec<String>>().join(", "));
     }
 }
 
@@ -110,7 +112,7 @@ fn launch_game(game: &mut Game) {
     while !game_over {
         // print!("\x1b[120S\x1b[1;1H");
         // print!("\x1B[2J\x1B[1;1H");
-        // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
+        // std::process::Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
         game_over = game.turn();
     }
 }
@@ -121,40 +123,3 @@ fn user_play_again() -> bool {
     std::io::stdin().read_line(&mut input).unwrap();
     input.trim().to_ascii_lowercase() == "y"
 }
-
-// fn main() {
-//     let args = ChessArgs::parse();
-
-//     let computer_player = if args.two_player {None} else {if args.black {Some(Player::One)} else {Some(Player::Two)}};
-//     if args.heuristic && args.self_play {
-//         return heuristic_self_play(args.search_depth, args.num_games);
-//     }
-    
-//     let save_dir = args.save_dir;
-//     let model = if args.two_player || args.heuristic { None } else { Some(Model::new(model_dir.as_str())) };
-//     if args.self_play {
-//         reinforcement_learning(args.num_games, &model, args.search_depth, args.epsilon_greedy, args.epsilon_decay);
-//     } else {
-//         let mut play_again = true;
-//         while play_again {
-//             play_again = launch_game(args.two_player, computer_player, &model, args.search_depth, args.allow_hints);
-//         }
-//     }
-// }
-
-// fn launch_game(two_player: bool, computer_player: Option<Player>, model: &Option<Model>, search_depth: Option<u8>, allow_hints: bool) -> bool {
-//     let mut game = if two_player {
-//         Game::two_player_game(allow_hints)
-//     } else {
-//         Game::single_player_game(computer_player, model, search_depth)
-//     };
-
-//     let mut game_over = false;
-//     while !game_over {
-//         // print!("\x1b[120S\x1b[1;1H");
-//         // print!("\x1B[2J\x1B[1;1H");
-//         // Command::new(if cfg!(target_os = "windows") {"cls"} else {"clear"}).status().unwrap();
-//         game_over = game.turn();
-//     }    
-//     play_again()
-// }
